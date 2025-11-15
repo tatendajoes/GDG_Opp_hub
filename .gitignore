@@ -43,3 +43,6 @@ next-env.d.ts
 *.tmp
 *.temp
 
+
+# Claude Code configuration
+.claude/
