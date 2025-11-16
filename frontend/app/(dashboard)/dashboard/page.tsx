@@ -2,47 +2,35 @@
 
 import { useState } from 'react'
 import ProtectedRoute from '@/components/auth/ProtectedRoute'
-import { useAuth } from '@/hooks/useAuth'
-import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import FilterBar from '@/components/opportunities/FilterBar'
 import SortDropdown, { SortOption } from '@/components/opportunities/SortDropdown'
 import SubmitModal from '@/components/opportunities/SubmitModal'
-import { LogOut, Plus } from 'lucide-react'
-import toast from 'react-hot-toast'
+import { Plus } from 'lucide-react'
 import OpportunityCard from '@/components/opportunities/OpportunityCard'
 import { useOpportunities } from '@/hooks/useOpportunities'
+import { useAuth } from '@/hooks/useAuth'
+import ProfileDropdown from '@/components/layout/ProfileDropdown'
 
 type OpportunityType = 'internship' | 'full_time' | 'research' | 'fellowship' | 'scholarship'
 
 export default function DashboardPage() {
-  const { signOut } = useAuth()
-  const router = useRouter()
-  
+  const { loading: authLoading } = useAuth()
+
   // Filter and sort state
   const [selectedTypes, setSelectedTypes] = useState<OpportunityType[]>([])
   const [selectedSort, setSelectedSort] = useState<SortOption>('deadline-asc')
-  
+
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false)
 
-  // Fetch opportunities using API hook
+  // Fetch opportunities using API hook - only when auth is ready
   const { opportunities, loading, error, refetch } = useOpportunities({
     types: selectedTypes,
     status: 'active',
     sort: selectedSort,
-    autoFetch: true
+    autoFetch: !authLoading  // Don't fetch until auth is ready
   })
-
-  const handleLogout = async () => {
-    try {
-      await signOut()
-      toast.success('Logged out successfully!')
-      router.push('/login')
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to log out')
-    }
-  }
 
   const handleSubmitOpportunity = () => {
     setIsModalOpen(true)
@@ -151,10 +139,7 @@ export default function DashboardPage() {
               <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
                 GDG Opportunities Hub
               </h1>
-              <Button onClick={handleLogout} variant="outline" size="sm">
-                <LogOut className="h-4 w-4 mr-2" />
-                Log out
-              </Button>
+              <ProfileDropdown />
             </div>
           </div>
         </div>

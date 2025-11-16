@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import OpportunityDetails from "@/components/opportunities/OpportunityDetails"
 import { Opportunity } from "@/types"
 import { useAuth } from "@/hooks/useAuth"
+import ProfileDropdown from "@/components/layout/ProfileDropdown"
 
 export default function OpportunityDetailsPage({
   params,
@@ -100,21 +101,31 @@ export default function OpportunityDetailsPage({
   }
 
   return (
-    <div className="container mx-auto p-6">
-      <div className="max-w-4xl mx-auto">
-        {/* Back Button */}
-        <button
-          onClick={() => router.back()}
-          className="flex items-center text-blue-600 hover:text-blue-800 mb-6 transition"
-        >
-          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-          Back
-        </button>
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50">
+      {/* Header */}
+      <div className="bg-white shadow-sm border-b border-gray-200">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <button
+              onClick={() => router.back()}
+              className="flex items-center text-purple-600 hover:text-purple-800 font-medium transition"
+            >
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+              Back
+            </button>
+            <ProfileDropdown />
+          </div>
+        </div>
+      </div>
 
-        {/* Opportunity Details Card */}
-        <OpportunityDetails opportunity={opportunity} isAdmin={isAdmin} />
+      {/* Main Content */}
+      <div className="container mx-auto p-6">
+        <div className="max-w-4xl mx-auto">
+          {/* Opportunity Details Card */}
+          <OpportunityDetails opportunity={opportunity} isAdmin={isAdmin} />
+        </div>
       </div>
     </div>
   )
