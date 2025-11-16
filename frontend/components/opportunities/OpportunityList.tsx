@@ -45,7 +45,9 @@ export default function OpportunityList() {
 
         setOpportunities(data || [])
       } catch (err) {
-        console.error('Error fetching opportunities:', err)
+        if (process.env.NODE_ENV === 'development') {
+          console.error('Error fetching opportunities:', err)
+        }
         setError(err instanceof Error ? err.message : 'Failed to load opportunities')
       } finally {
         setLoading(false)

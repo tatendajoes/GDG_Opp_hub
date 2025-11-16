@@ -10,24 +10,10 @@ import SortDropdown, { SortOption } from '@/components/opportunities/SortDropdow
 import { createClient } from '@/lib/supabase/client'
 import { LogOut, Plus } from 'lucide-react'
 import toast from 'react-hot-toast'
+import OpportunityCard from '@/components/opportunities/OpportunityCard'
+import { Opportunity } from '@/types'
 
 type OpportunityType = 'internship' | 'full_time' | 'research' | 'fellowship' | 'scholarship'
-
-interface Opportunity {
-  id: string
-  url: string
-  company_name: string
-  job_title: string
-  opportunity_type: OpportunityType
-  role_type: string | null
-  relevant_majors: string[]
-  deadline: string | null
-  requirements: string | null
-  location: string | null
-  description: string | null
-  status: 'active' | 'expired'
-  created_at: string
-}
 
 export default function DashboardPage() {
   const { signOut } = useAuth()
@@ -43,33 +29,75 @@ export default function DashboardPage() {
 
   // Fetch opportunities
   useEffect(() => {
+    const abortController = new AbortController()
+    let isMounted = true
+
     async function fetchOpportunities() {
       try {
         setLoading(true)
         setError(null)
 
         const supabase = createClient()
-        
+
         const { data, error: fetchError } = await supabase
           .from('opportunities')
           .select('*')
           .eq('status', 'active')
+          .abortSignal(abortController.signal)
 
         if (fetchError) {
           throw fetchError
         }
 
-        setOpportunities(data || [])
+        // Only update state if component is still mounted
+        if (!isMounted) return
+
+        // Validate data is an array before setting state
+        if (!Array.isArray(data)) {
+          throw new TypeError('Invalid data format received from database')
+        }
+
+        setOpportunities(data)
       } catch (err) {
-        console.error('Error fetching opportunities:', err)
+        // Ignore abort errors
+        if (err instanceof Error && err.name === 'AbortError') return
+
+        // Only update state if component is still mounted
+        if (!isMounted) return
+
+        if (process.env.NODE_ENV === 'development') {
+          console.error('Error fetching opportunities:', err)
+        }
         setError(err instanceof Error ? err.message : 'Failed to load opportunities')
       } finally {
-        setLoading(false)
+        if (isMounted) {
+          setLoading(false)
+        }
       }
     }
 
     fetchOpportunities()
+
+    // Cleanup function
+    return () => {
+      isMounted = false
+      abortController.abort()
+    }
   }, [])
+
+  // Helper function to safely parse and compare dates
+  const compareDates = (dateA: string | null, dateB: string | null, ascending: boolean): number => {
+    if (!dateA) return 1
+    if (!dateB) return -1
+
+    const timeA = new Date(dateA).getTime()
+    const timeB = new Date(dateB).getTime()
+
+    if (Number.isNaN(timeA)) return 1
+    if (Number.isNaN(timeB)) return -1
+
+    return ascending ? timeA - timeB : timeB - timeA
+  }
 
   // Apply filters and sorting
   const filteredAndSortedOpportunities = useMemo(() => {
@@ -81,34 +109,24 @@ export default function DashboardPage() {
     }
 
     // Apply sorting
-    filtered.sort((a, b) => {
+    return filtered.sort((a, b) => {
       switch (selectedSort) {
         case 'deadline-asc':
-          // Closest deadline first (nulls last)
-          if (!a.deadline) return 1
-          if (!b.deadline) return -1
-          return new Date(a.deadline).getTime() - new Date(b.deadline).getTime()
-        
+          return compareDates(a.deadline, b.deadline, true)
+
         case 'deadline-desc':
-          // Farthest deadline first (nulls last)
-          if (!a.deadline) return 1
-          if (!b.deadline) return -1
-          return new Date(b.deadline).getTime() - new Date(a.deadline).getTime()
-        
+          return compareDates(a.deadline, b.deadline, false)
+
         case 'recent':
-          // Recently added (newest first)
-          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-        
+          return compareDates(a.created_at, b.created_at, false)
+
         case 'company-asc':
-          // Company name A-Z
           return a.company_name.localeCompare(b.company_name)
-        
+
         default:
           return 0
       }
     })
-
-    return filtered
   }, [opportunities, selectedTypes, selectedSort])
 
   const handleLogout = async () => {
@@ -257,6 +275,3 @@ export default function DashboardPage() {
     </ProtectedRoute>
   )
 }
-
-// Import OpportunityCard inline (we already created this component)
-import OpportunityCard from '@/components/opportunities/OpportunityCard'

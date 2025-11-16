@@ -39,6 +39,23 @@ export default function FilterBar({ selectedTypes, onFilterChange }: Readonly<Fi
   const isSelected = (type: OpportunityType) => selectedTypes.includes(type)
   const allSelected = selectedTypes.length === filterOptions.length
   const noneSelected = selectedTypes.length === 0
+  const someSelected = selectedTypes.length > 0 && !allSelected
+
+  // Determine the label and action for the "All" button
+  const getAllButtonLabel = () => {
+    if (noneSelected || allSelected) return 'All'
+    return 'Select All'
+  }
+
+  const getAllButtonAriaLabel = () => {
+    if (noneSelected) return 'Show all opportunity types'
+    if (allSelected) return 'Clear all filters'
+    return 'Select all opportunity types'
+  }
+
+  const allButtonLabel = getAllButtonLabel()
+  const allButtonAriaLabel = getAllButtonAriaLabel()
+  const allButtonAction = noneSelected || allSelected ? handleClearFilters : handleSelectAll
 
   return (
     <div className="bg-white rounded-lg shadow-md p-4 mb-6 border border-gray-200">
@@ -50,11 +67,13 @@ export default function FilterBar({ selectedTypes, onFilterChange }: Readonly<Fi
 
         {/* Filter Buttons */}
         <div className="flex flex-wrap gap-2">
-          {/* All Button */}
+          {/* All/Select All Button */}
           <Button
             variant={allSelected || noneSelected ? 'default' : 'outline'}
             size="sm"
-            onClick={noneSelected ? handleSelectAll : handleClearFilters}
+            onClick={allButtonAction}
+            aria-pressed={allSelected || noneSelected}
+            aria-label={allButtonAriaLabel}
             className={`
               transition-all duration-200
               ${allSelected || noneSelected
@@ -63,7 +82,7 @@ export default function FilterBar({ selectedTypes, onFilterChange }: Readonly<Fi
               }
             `}
           >
-            All
+            {allButtonLabel}
           </Button>
 
           {filterOptions.map((option) => (
@@ -72,6 +91,8 @@ export default function FilterBar({ selectedTypes, onFilterChange }: Readonly<Fi
               variant={isSelected(option.value as OpportunityType) ? 'default' : 'outline'}
               size="sm"
               onClick={() => handleToggleFilter(option.value as OpportunityType)}
+              aria-pressed={isSelected(option.value as OpportunityType)}
+              aria-label={`${isSelected(option.value as OpportunityType) ? 'Remove' : 'Add'} ${option.label} filter`}
               className={`
                 transition-all duration-200
                 ${isSelected(option.value as OpportunityType)
@@ -85,15 +106,16 @@ export default function FilterBar({ selectedTypes, onFilterChange }: Readonly<Fi
           ))}
         </div>
 
-        {/* Clear Filters */}
-        {selectedTypes.length > 0 && !allSelected && (
+        {/* Clear Filters Button */}
+        {someSelected && (
           <Button
             variant="ghost"
             size="sm"
             onClick={handleClearFilters}
+            aria-label="Clear all filters"
             className="text-gray-600 hover:text-purple-600"
           >
-            Clear Filters
+            Clear All
           </Button>
         )}
       </div>
