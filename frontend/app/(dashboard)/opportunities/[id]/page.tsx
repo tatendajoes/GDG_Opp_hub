@@ -107,7 +107,11 @@ export default function OpportunityDetailsPage({
       <PageHeader />
       <div className="container mx-auto p-6">
         <div className="max-w-4xl mx-auto">
-          <OpportunityDetails opportunity={opportunity} isAdmin={isAdmin} />
+          <OpportunityDetails
+            opportunity={opportunity}
+            isAdmin={isAdmin}
+            onOpportunityUpdated={setOpportunity}
+          />
         </div>
       </div>
     </div>
