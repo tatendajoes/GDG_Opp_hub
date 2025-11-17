@@ -22,6 +22,8 @@ export async function GET(request: NextRequest) {
     // Parse query parameters
     const searchParams = request.nextUrl.searchParams
     const type = searchParams.get('type') as OpportunityType | null
+    const majors = searchParams.get('majors')
+    const roles = searchParams.get('roles')
     const status = (searchParams.get('status') as OpportunityStatus) || 'active'
     const sort = (searchParams.get('sort') as SortOption) || 'deadline-asc'
     const limit = Math.min(parseInt(searchParams.get('limit') || '20'), 100)
@@ -50,6 +52,32 @@ export async function GET(request: NextRequest) {
       } else {
         query = query.in('opportunity_type', types)
       }
+    }
+
+    if (roles) {
+      const roleList = roles.split(',').map(r => r.trim()).filter(Boolean)
+      if (roleList.length === 1) {
+        query = query.eq('role_type', roleList[0])
+      } else if (roleList.length > 1) {
+        query = query.in('role_type', roleList)
+      }
+    }
+
+    // Apply major filter (comma separated values)
+    if (majors) {
+      const majorList = majors.split(',').map(m => m.trim()).filter(Boolean)
+
+      // Use PostgREST 'cs' (contains) operator for JSONB arrays
+      // Format: relevant_majors.cs.["MajorName"] checks if the JSONB array contains the value
+      const orFilters = majorList
+        .map((major) => {
+          // Escape quotes in major name for JSON
+          const escapedMajor = major.replace(/"/g, '\\"')
+          // Format: relevant_majors.cs.["MajorName"]
+          return `relevant_majors.cs.["${escapedMajor}"]`
+        })
+        .join(',')
+      query = query.or(orFilters)
     }
 
     // Apply sorting
