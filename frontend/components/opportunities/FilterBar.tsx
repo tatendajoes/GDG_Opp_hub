@@ -1,7 +1,7 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
-import { MAJORS, type Major } from '@/lib/constants'
+import { MAJORS, ROLE_TYPES, type Major, type RoleType } from '@/lib/constants'
 
 type OpportunityType = 'internship' | 'full_time' | 'research' | 'fellowship' | 'scholarship'
 
@@ -10,6 +10,8 @@ interface FilterBarProps {
   readonly onFilterChange: (types: OpportunityType[]) => void
   readonly selectedMajors: Major[]
   readonly onMajorChange: (majors: Major[]) => void
+  readonly selectedRoles: RoleType[]
+  readonly onRoleChange: (roles: RoleType[]) => void
 }
 
 const filterOptions = [
@@ -20,7 +22,14 @@ const filterOptions = [
   { value: 'scholarship', label: 'Scholarship' },
 ] as const
 
-export default function FilterBar({ selectedTypes, selectedMajors, onFilterChange, onMajorChange }: Readonly<FilterBarProps>) {
+export default function FilterBar({
+  selectedTypes,
+  selectedMajors,
+  selectedRoles,
+  onFilterChange,
+  onMajorChange,
+  onRoleChange
+}: Readonly<FilterBarProps>) {
   const handleToggleType = (type: OpportunityType) => {
     if (selectedTypes.includes(type)) {
       onFilterChange(selectedTypes.filter(t => t !== type))
@@ -37,9 +46,18 @@ export default function FilterBar({ selectedTypes, selectedMajors, onFilterChang
     }
   }
 
+  const handleToggleRole = (role: RoleType) => {
+    if (selectedRoles.includes(role)) {
+      onRoleChange(selectedRoles.filter(r => r !== role))
+    } else {
+      onRoleChange([...selectedRoles, role])
+    }
+  }
+
   const handleClearFilters = () => {
     onFilterChange([])
     onMajorChange([])
+    onRoleChange([])
   }
 
   const handleSelectAllTypes = () => {
@@ -48,12 +66,14 @@ export default function FilterBar({ selectedTypes, selectedMajors, onFilterChang
 
   const isTypeSelected = (type: OpportunityType) => selectedTypes.includes(type)
   const isMajorSelected = (major: Major) => selectedMajors.includes(major)
+  const isRoleSelected = (role: RoleType) => selectedRoles.includes(role)
 
   const allTypesSelected = selectedTypes.length === filterOptions.length
   const noTypesSelected = selectedTypes.length === 0
   const someTypesSelected = selectedTypes.length > 0 && !allTypesSelected
   const hasMajorFilters = selectedMajors.length > 0
-  const hasActiveFilters = selectedTypes.length > 0 || hasMajorFilters
+  const hasRoleFilters = selectedRoles.length > 0
+  const hasActiveFilters = selectedTypes.length > 0 || hasMajorFilters || hasRoleFilters
 
   const getAllButtonLabel = () => {
     if (noTypesSelected || allTypesSelected) return 'All'
@@ -156,6 +176,46 @@ export default function FilterBar({ selectedTypes, selectedMajors, onFilterChang
                 `}
               >
                 {major}
+              </Button>
+            ))}
+          </div>
+        </div>
+
+        <div className="border-t border-gray-100" />
+
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-gray-700">
+              Filter by Role {selectedRoles.length > 0 && `(${selectedRoles.length})`}
+            </h3>
+            {hasRoleFilters && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onRoleChange([])}
+                aria-label="Clear role filters"
+                className="text-gray-600 hover:text-purple-600"
+              >
+                Clear roles
+              </Button>
+            )}
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {ROLE_TYPES.map((role) => (
+              <Button
+                key={role}
+                variant={isRoleSelected(role) ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => handleToggleRole(role)}
+                aria-pressed={isRoleSelected(role)}
+                aria-label={`${isRoleSelected(role) ? 'Remove' : 'Add'} ${role} role filter`}
+                className={`
+                  transition-all duration-200
+                  ${isRoleSelected(role) ? 'shadow-md' : 'hover:border-purple-300'}
+                `}
+              >
+                {role}
               </Button>
             ))}
           </div>
