@@ -133,11 +133,9 @@ export async function PUT(
       }
     }
 
-    // Update opportunity
-    // TypeScript can't properly infer update types, but runtime types are correct
+    // Update the opportunity in the database
     const { data, error } = await supabase
       .from('opportunities')
-      // @ts-expect-error - Supabase TypeScript inference limitation with update types
       .update(updateData)
       .eq('id', params.id)
       .select()
@@ -213,7 +211,6 @@ export async function DELETE(
     }
     const { data, error } = await supabase
       .from('opportunities')
-      // @ts-expect-error - Supabase TypeScript inference limitation with update types
       .update(deleteUpdate)
       .eq('id', params.id)
       .select()

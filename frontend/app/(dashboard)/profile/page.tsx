@@ -5,17 +5,22 @@ import { useRouter } from 'next/navigation'
 import ProtectedRoute from '@/components/auth/ProtectedRoute'
 import { useAuth } from '@/hooks/useAuth'
 import { createClient } from '@/lib/supabase/client'
-import { User } from '@/types'
+import { Database } from '@/lib/supabase/types'
 import { Button } from '@/components/ui/button'
 import { Briefcase, Calendar, GraduationCap, Mail, Settings, User as UserIcon, Camera, Upload, ArrowLeft } from 'lucide-react'
 import { format } from 'date-fns'
 import toast from 'react-hot-toast'
 
+export const dynamic = 'force-dynamic'
+
+type UserProfile = Database['public']['Tables']['users']['Row']
+
 export default function ProfilePage() {
   const { user } = useAuth()
+  const supabase = createClient()
   const router = useRouter()
   const [loading, setLoading] = useState(true)
-  const [profileData, setProfileData] = useState<User | null>(null)
+  const [profileData, setProfileData] = useState<UserProfile | null>(null)
   const [opportunitiesCount, setOpportunitiesCount] = useState(0)
   const [uploading, setUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -29,7 +34,6 @@ export default function ProfilePage() {
 
       try {
         setLoading(true)
-        const supabase = createClient()
 
         // Fetch user profile from users table
         const { data: userData, error: userError } = await supabase
@@ -76,7 +80,7 @@ export default function ProfilePage() {
       isMounted = false
       abortController.abort()
     }
-  }, [user?.id, user?.email])
+  }, [user?.id, user?.email, supabase])
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return 'N/A'
@@ -111,7 +115,6 @@ export default function ProfilePage() {
 
     try {
       setUploading(true)
-      const supabase = createClient()
 
       // Create unique file name with user ID and timestamp
       const fileExt = file.name.split('.').pop()
@@ -124,7 +127,7 @@ export default function ProfilePage() {
         // URL format: https://xxx.supabase.co/storage/v1/object/public/avatars/path
         const urlParts = profileData.avatar_url.split('/public/avatars/')
         if (urlParts.length > 1) {
-          const storagePath = urlParts[1]
+          const storagePath = urlParts[1].split('?')[0] // Remove query params
           await supabase.storage
             .from('avatars')
             .remove([storagePath])
@@ -136,7 +139,7 @@ export default function ProfilePage() {
         .from('avatars')
         .upload(fileName, file, {
           cacheControl: '3600',
-          upsert: true
+          upsert: false // Use false to prevent overwriting; we use unique names
         })
 
       if (uploadError) {
@@ -151,8 +154,8 @@ export default function ProfilePage() {
       const publicUrl = `${data.publicUrl}?t=${timestamp}`
 
       // Update user profile with avatar URL
-      const { error: updateError } = await (supabase
-        .from('users') as any)
+      const { error: updateError } = await supabase
+        .from('users')
         .update({ avatar_url: publicUrl })
         .eq('id', user.id)
 
@@ -190,6 +193,18 @@ export default function ProfilePage() {
     )
   }
 
+  if (!user || !profileData) {
+    return (
+      <ProtectedRoute>
+        <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 flex items-center justify-center">
+          <div className="text-center">
+            <p className="text-gray-600">Could not load profile data. Please try again later.</p>
+          </div>
+        </div>
+      </ProtectedRoute>
+    )
+  }
+
   return (
     <ProtectedRoute>
       <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50">
@@ -212,7 +227,7 @@ export default function ProfilePage() {
               </Button>
             </div>
 
-            {/* Edit Profile Button */
+            {/* Edit Profile Button */}
             <div className="absolute top-4 right-4 sm:top-6 sm:right-6">
               <Button
                 onClick={() => router.push('/settings')}
@@ -229,10 +244,11 @@ export default function ProfilePage() {
           {/* Profile Info Container */}
           <div className="container mx-auto px-4">
             <div className="max-w-4xl mx-auto">
-              <div className="relative -mt-16 sm:-mt-20 pb-6">
+              <div className="relative -mt-16 sm:-mt-20">
                 {/* Avatar */}
                 <div className="flex justify-center mb-6">
                   <div className="relative group cursor-pointer" onClick={handleAvatarClick}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={profileData?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.email}`}
                       alt={profileData?.name || 'User'}

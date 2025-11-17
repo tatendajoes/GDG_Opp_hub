@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
+import { Database } from "@/lib/supabase/types"
 
 type OpportunityType = 'internship' | 'full_time' | 'research' | 'fellowship' | 'scholarship'
 type OpportunityStatus = 'active' | 'expired'
@@ -46,9 +47,9 @@ export async function GET(request: NextRequest) {
     if (type) {
       const types = type.split(',').map(t => t.trim())
       if (types.length === 1) {
-        query = query.eq('opportunity_type', types[0])
+        query = query.eq('opportunity_type', types[0] as Database['public']['Tables']['opportunities']['Row']['opportunity_type'])
       } else {
-        query = query.in('opportunity_type', types)
+        query = query.in('opportunity_type', types as Database['public']['Tables']['opportunities']['Row']['opportunity_type'][])
       }
     }
 

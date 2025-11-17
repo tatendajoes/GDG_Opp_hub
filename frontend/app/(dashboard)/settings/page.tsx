@@ -11,6 +11,8 @@ import { Button } from '@/components/ui/button'
 import { User as UserIcon, MapPin, Shield, Lock, Calendar, Mail, GraduationCap, Globe, MapPinned, ArrowLeft } from 'lucide-react'
 import toast from 'react-hot-toast'
 
+export const dynamic = 'force-dynamic'
+
 type UserRow = Database["public"]["Tables"]["users"]["Row"]
 
 export default function SettingsPage() {
@@ -60,7 +62,7 @@ export default function SettingsPage() {
           setName(userData.name || '')
           setEmail(userData.email || '')
           setMajor(userData.major || '')
-          setGender(userData.gender || '')
+          setGender((userData.gender || '') as 'male' | 'female' | 'other' | '')
           setBirthday(userData.birthday || '')
           setCountry(userData.country || '')
           setRegion(userData.region || '')
