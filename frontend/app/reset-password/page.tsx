@@ -80,11 +80,15 @@ export default function ResetPasswordPage() {
 
       if (error) throw error
 
-      toast.success('Password updated successfully!')
+      toast.success('Password updated successfully! Please log in with your new password.')
 
-      // Redirect to dashboard after a short delay
+      // Sign out the user to clear the password reset session
+      // This invalidates the reset link so it can't be reused
+      await supabase.auth.signOut()
+
+      // Redirect to login page after a short delay
       setTimeout(() => {
-        router.push('/dashboard')
+        router.push('/login')
       }, 1500)
     } catch (err) {
       if (process.env.NODE_ENV === 'development') {
@@ -150,8 +154,8 @@ export default function ResetPasswordPage() {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
-                tabIndex={-1}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 rounded"
+                aria-label={showPassword ? "Hide password" : "Show password"}
               >
                 {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
               </button>
@@ -180,8 +184,8 @@ export default function ResetPasswordPage() {
               <button
                 type="button"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
-                tabIndex={-1}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 rounded"
+                aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
               >
                 {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
               </button>

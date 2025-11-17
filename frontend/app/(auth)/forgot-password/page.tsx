@@ -16,6 +16,13 @@ export default function ForgotPasswordPage() {
   const [loading, setLoading] = useState(false)
   const [emailSent, setEmailSent] = useState(false)
 
+  const handleBackToLogin = async () => {
+    // Sign out any existing session before going to login
+    const supabase = createClient()
+    await supabase.auth.signOut()
+    router.push('/login')
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -36,28 +43,22 @@ export default function ForgotPasswordPage() {
       setLoading(true)
       const supabase = createClient()
 
-      // Check if user exists in the users table
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('email')
-        .eq('email', email.toLowerCase())
-        .single()
-
-      if (userError || !userData) {
-        toast.error('No account found with this email address')
-        setLoading(false)
-        return
-      }
-
-      // Send password reset email
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      // IMPORTANT: Always send reset email regardless of account existence
+      // to prevent account enumeration attacks. Supabase will silently
+      // ignore emails that don't exist in auth.users.
+      //
+      // NOTE: Ensure the redirectTo URL is added to Supabase Auth's
+      // allowed redirect URLs in your project settings:
+      // Dashboard -> Authentication -> URL Configuration -> Redirect URLs
+      const { error } = await supabase.auth.resetPasswordForEmail(email.toLowerCase(), {
         redirectTo: `${window.location.origin}/reset-password`,
       })
 
       if (error) throw error
 
+      // Always show success to prevent account enumeration
       setEmailSent(true)
-      toast.success('Password reset email sent! Check your inbox.')
+      toast.success('If an account exists with this email, you will receive a password reset link.')
     } catch (err) {
       if (process.env.NODE_ENV === 'development') {
         console.error('Error sending password reset email:', err)
@@ -85,24 +86,21 @@ export default function ForgotPasswordPage() {
               Check your email
             </h1>
             <p className="text-gray-600">
-              We've sent a password reset link to
-            </p>
-            <p className="text-purple-600 font-medium mt-1">
-              {email}
+              If an account exists for <span className="text-purple-600 font-medium">{email}</span>, you will receive a password reset link shortly.
             </p>
           </div>
 
           {/* Instructions */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
             <p className="text-sm text-gray-700">
-              Click the link in the email to reset your password. If you don't see it, check your spam folder.
+              If you receive an email, click the link to reset your password. Don't forget to check your spam folder if you don't see it within a few minutes.
             </p>
           </div>
 
           {/* Actions */}
           <div className="space-y-3">
             <Button
-              onClick={() => router.push('/login')}
+              onClick={handleBackToLogin}
               className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
             >
               Back to Login
@@ -171,13 +169,13 @@ export default function ForgotPasswordPage() {
 
         {/* Back to Login */}
         <div className="mt-6 text-center">
-          <Link
-            href="/login"
+          <button
+            onClick={handleBackToLogin}
             className="inline-flex items-center text-purple-600 hover:text-purple-700 text-sm font-medium"
           >
             <ArrowLeft className="h-4 w-4 mr-1" />
             Back to Login
-          </Link>
+          </button>
         </div>
       </div>
     </div>
