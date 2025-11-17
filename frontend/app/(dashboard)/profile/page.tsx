@@ -113,9 +113,10 @@ export default function ProfilePage() {
       setUploading(true)
       const supabase = createClient()
 
-      // Create unique file name with user ID
+      // Create unique file name with user ID and timestamp
       const fileExt = file.name.split('.').pop()
-      const fileName = `${user.id}/avatar.${fileExt}`
+      const timestamp = Date.now()
+      const fileName = `${user.id}/avatar-${timestamp}.${fileExt}`
 
       // Delete old avatar if exists
       if (profileData?.avatar_url) {
@@ -142,12 +143,12 @@ export default function ProfilePage() {
         throw uploadError
       }
 
-      // Get public URL
+      // Get public URL with cache buster
       const { data } = supabase.storage
         .from('avatars')
         .getPublicUrl(fileName)
 
-      const publicUrl = data.publicUrl
+      const publicUrl = `${data.publicUrl}?t=${timestamp}`
 
       // Update user profile with avatar URL
       const { error: updateError } = await (supabase
@@ -231,52 +232,34 @@ export default function ProfilePage() {
               <div className="relative -mt-16 sm:-mt-20 pb-6">
                 {/* Avatar */}
                 <div className="flex justify-center mb-6">
-                  <div className="relative group">
+                  <div className="relative group cursor-pointer" onClick={handleAvatarClick}>
+                    <img
+                      src={profileData?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.email}`}
+                      alt={profileData?.name || 'User'}
+                      className="w-32 h-32 sm:w-36 sm:h-36 rounded-full object-cover border-4 border-white shadow-xl"
+                    />
+                    
+                    {/* Hidden file input */}
                     <input
                       ref={fileInputRef}
                       type="file"
-                      accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                      accept="image/*"
                       onChange={handleFileChange}
                       className="hidden"
                     />
-                    {profileData?.avatar_url ? (
-                      <div className="relative">
-                        <img
-                          src={profileData.avatar_url}
-                          alt={profileData.name}
-                          className="w-32 h-32 sm:w-36 sm:h-36 rounded-full object-cover shadow-xl ring-4 ring-white"
-                        />
-                        <button
-                          onClick={handleAvatarClick}
-                          disabled={uploading}
-                          className="absolute inset-0 w-32 h-32 sm:w-36 sm:h-36 rounded-full bg-black bg-opacity-0 group-hover:bg-opacity-50 flex items-center justify-center transition-all duration-200 cursor-pointer"
-                          title="Change profile picture"
-                          aria-label="Change profile picture"
-                        >
-                          <Camera className="w-10 h-10 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
-                        </button>
+                    
+                    {/* Hover overlay */}
+                    {!uploading && (
+                      <div className="absolute inset-0 w-32 h-32 sm:w-36 sm:h-36 rounded-full bg-black bg-opacity-0 group-hover:bg-opacity-50 flex items-center justify-center transition-all duration-200">
+                        <Camera className="w-10 h-10 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
                       </div>
-                    ) : (
-                      <button
-                        onClick={handleAvatarClick}
-                        disabled={uploading}
-                        className="relative w-32 h-32 sm:w-36 sm:h-36 rounded-full bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center text-white shadow-xl ring-4 ring-white group-hover:shadow-2xl transition-all duration-200 cursor-pointer"
-                        title="Upload profile picture"
-                        aria-label="Upload profile picture"
-                      >
-                        {uploading ? (
-                          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
-                        ) : (
-                          <>
-                            <UserIcon className="w-16 h-16 group-hover:opacity-50 transition-opacity duration-200" />
-                            <Upload className="w-10 h-10 absolute opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
-                          </>
-                        )}
-                      </button>
                     )}
+                    
+                    {/* Uploading state */}
                     {uploading && (
-                      <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 whitespace-nowrap">
-                        <p className="text-sm text-gray-600 font-medium">Uploading...</p>
+                      <div className="absolute inset-0 w-32 h-32 sm:w-36 sm:h-36 rounded-full bg-black bg-opacity-50 flex flex-col items-center justify-center">
+                        <Upload className="w-8 h-8 text-white animate-bounce mb-2" />
+                        <p className="text-white text-xs font-medium">Uploading...</p>
                       </div>
                     )}
                   </div>

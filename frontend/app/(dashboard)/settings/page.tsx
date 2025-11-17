@@ -338,7 +338,7 @@ export default function SettingsPage() {
                   <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 lg:p-8">
                     <div className="mb-8">
                       <h2 className="text-2xl font-bold text-gray-900 mb-2">Location Information</h2>
-                      <p className="text-gray-600">Let us know where you're based</p>
+                      <p className="text-gray-600">{"Let us know where you're based"}</p>
                     </div>
 
                     <div className="space-y-6">
@@ -438,7 +438,7 @@ export default function SettingsPage() {
                           />
                         </div>
                         <p className="mt-2 text-sm text-gray-500">
-                          Email cannot be changed at this time
+                          {"Your email can't be changed at this time"}
                         </p>
                       </div>
 
