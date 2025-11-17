@@ -27,6 +27,18 @@ export default function Home() {
     { name: "Scholarships", href: "/dashboard?type=scholarship" },
   ]
 
+  // Helper function to map display type to query parameter
+  const getTypeQueryParam = (displayType: string): string => {
+    const typeMap: Record<string, string> = {
+      "Internships": "internship",
+      "Full-time": "full_time",
+      "Research": "research",
+      "Fellowships": "fellowship",
+      "Scholarships": "scholarship",
+    }
+    return typeMap[displayType] || "internship"
+  }
+
   const featuredOpportunities = [
     {
       id: 1,
@@ -34,13 +46,15 @@ export default function Home() {
       title: "Software Engineering Internship",
       description: "Join our team as a software engineering intern and work on cutting-edge projects. Gain hands-on experience with modern technologies.",
       image: "💻",
+      hasLink: true,
     },
     {
       id: 2,
-      type: "Full-time",
-      title: "Senior Data Scientist Role",
-      description: "Lead data science initiatives and drive insights for our growing analytics team. Work with advanced ML models and big data.",
-      image: "📊",
+      type: "Internships",
+      title: "Mechanical Engineering Internship",
+      description: "Gain hands-on experience in mechanical engineering design, analysis, and manufacturing. Work on real-world projects and collaborate with experienced engineers.",
+      image: "⚙️",
+      hasLink: false, // No specific ME opportunities yet
     },
     {
       id: 3,
@@ -48,6 +62,7 @@ export default function Home() {
       title: "Biomedical Research Fellowship",
       description: "Conduct groundbreaking research in biomedical engineering. Collaborate with leading researchers in state-of-the-art labs.",
       image: "🔬",
+      hasLink: true,
     },
     {
       id: 4,
@@ -55,6 +70,7 @@ export default function Home() {
       title: "Global Leadership Scholarship",
       description: "Merit-based scholarship for outstanding students pursuing leadership roles. Full tuition coverage and mentorship program.",
       image: "🎓",
+      hasLink: true,
     },
   ]
 
@@ -186,13 +202,19 @@ export default function Home() {
                   <p className="text-gray-600 mb-4 text-sm sm:text-base line-clamp-3">
                     {opportunity.description}
                   </p>
-                  <Link
-                    href={`/opportunities/${opportunity.id}`}
-                    className="inline-flex items-center text-purple-600 font-semibold hover:text-purple-700 transition-colors group/link text-sm sm:text-base"
-                  >
-                    Learn More
-                    <ArrowRight className="ml-2 w-4 h-4 group-hover/link:translate-x-1 transition-transform" />
-                  </Link>
+                  {opportunity.hasLink === false ? (
+                    <div className="inline-flex items-center text-gray-500 text-sm sm:text-base italic">
+                      <span>No opportunities yet. Be the first to share!</span>
+                    </div>
+                  ) : (
+                    <Link
+                      href={`/dashboard?type=${getTypeQueryParam(opportunity.type)}`}
+                      className="inline-flex items-center text-purple-600 font-semibold hover:text-purple-700 transition-colors group/link text-sm sm:text-base"
+                    >
+                      Learn More
+                      <ArrowRight className="ml-2 w-4 h-4 group-hover/link:translate-x-1 transition-transform" />
+                    </Link>
+                  )}
                 </div>
               </div>
             ))}

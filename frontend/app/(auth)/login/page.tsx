@@ -1,19 +1,22 @@
 'use client'
 
 import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import LoginForm from '@/components/auth/LoginForm'
 import { useAuth } from '@/hooks/useAuth'
 
 export default function LoginPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { user, loading } = useAuth()
 
   useEffect(() => {
     if (!loading && user) {
-      router.push('/dashboard')
+      // If user is already logged in, redirect to the intended URL or dashboard
+      const redirectUrl = searchParams.get('redirect') || '/dashboard'
+      router.push(redirectUrl)
     }
-  }, [user, loading, router])
+  }, [user, loading, router, searchParams])
 
   if (loading) {
     return (

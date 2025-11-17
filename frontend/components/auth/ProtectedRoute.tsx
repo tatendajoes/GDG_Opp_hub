@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 
 interface ProtectedRouteProps {
@@ -10,13 +10,17 @@ interface ProtectedRouteProps {
 
 export default function ProtectedRoute({ children }: Readonly<ProtectedRouteProps>) {
   const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
   const { user, loading } = useAuth()
 
   useEffect(() => {
     if (!loading && !user) {
-      router.push('/login')
+      // Preserve the current URL (path + query params) for redirect after login
+      const currentUrl = pathname + (searchParams.toString() ? `?${searchParams.toString()}` : '')
+      router.push(`/login?redirect=${encodeURIComponent(currentUrl)}`)
     }
-  }, [user, loading, router])
+  }, [user, loading, router, pathname, searchParams])
 
   if (loading) {
     return (

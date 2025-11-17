@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import ProtectedRoute from '@/components/auth/ProtectedRoute'
 import { Button } from '@/components/ui/button'
 import FilterBar from '@/components/opportunities/FilterBar'
@@ -16,10 +17,24 @@ type OpportunityType = 'internship' | 'full_time' | 'research' | 'fellowship' | 
 
 export default function DashboardPage() {
   const { loading: authLoading } = useAuth()
+  const searchParams = useSearchParams()
 
   // Filter and sort state
   const [selectedTypes, setSelectedTypes] = useState<OpportunityType[]>([])
   const [selectedSort, setSelectedSort] = useState<SortOption>('deadline-asc')
+
+  // Read URL params on mount to set initial filter
+  useEffect(() => {
+    const typeParam = searchParams.get('type')
+    if (typeParam) {
+      // Validate that it's a valid opportunity type
+      const validTypes: OpportunityType[] = ['internship', 'full_time', 'research', 'fellowship', 'scholarship']
+      const type = typeParam as OpportunityType
+      if (validTypes.includes(type)) {
+        setSelectedTypes([type])
+      }
+    }
+  }, [searchParams])
 
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false)

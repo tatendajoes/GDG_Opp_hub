@@ -4,7 +4,7 @@
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
 import { Chrome, Loader2 } from 'lucide-react'
@@ -17,7 +17,11 @@ import { loginSchema, LoginFormData } from '@/lib/validations/auth'
 export default function LoginForm() {
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { signIn, signInWithGoogle } = useAuth()
+  
+  // Get redirect URL from query params
+  const redirectUrl = searchParams.get('redirect') || '/dashboard'
 
   const {
     register,
@@ -32,7 +36,7 @@ export default function LoginForm() {
     try {
       await signIn(data)
       toast.success('Logged in successfully!')
-      router.push('/dashboard')
+      router.push(redirectUrl)
     } catch (error: any) {
       toast.error(error.message || 'Invalid email or password')
     } finally {
