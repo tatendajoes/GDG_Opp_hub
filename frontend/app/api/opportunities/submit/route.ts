@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { 
           error: "Duplicate opportunity",
-          message: `This opportunity has already been submitted: ${existingOpportunity.company_name} - ${existingOpportunity.job_title}`
+          message: "This opportunity already exists"
         },
         { status: 409 }
       )
@@ -167,7 +167,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(
           { 
             error: "Duplicate opportunity",
-            message: "This opportunity was just submitted by someone else"
+            message: "This opportunity already exists"
           },
           { status: 409 }
         )

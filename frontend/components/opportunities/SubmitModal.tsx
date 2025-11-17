@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import toast from 'react-hot-toast'
+import confetti from 'canvas-confetti'
 import { Loader2, Sparkles } from 'lucide-react'
 import {
   Dialog,
@@ -77,12 +78,29 @@ export default function SubmitModal({ open, onOpenChange, onSuccess }: SubmitMod
       if (!response.ok) {
         if (response.status === 400 && result.details) {
           const errorMessages = result.details.map((d: any) => d.message).join(', ')
-          throw new Error(errorMessages || result.error || 'Validation failed')
+          throw new Error(errorMessages || result.message || result.error || 'Validation failed')
         }
-        throw new Error(result.error || 'Failed to submit opportunity')
+        throw new Error(result.message || result.error || 'Failed to submit opportunity')
       }
 
-      toast.success(result.message || 'Opportunity submitted successfully!')
+      // 🎉 Success! Trigger confetti
+      confetti({
+        particleCount: 100,
+        spread: 70,
+        origin: { y: 0.6 },
+        colors: ['#9333ea', '#a855f7', '#c084fc', '#e9d5ff'],
+      })
+
+      // Show thank you toast
+      toast.success('🎉 Thank you for contributing! Your opportunity has been submitted successfully!', {
+        duration: 1000,
+        style: {
+          background: '#9333ea',
+          color: '#fff',
+          fontWeight: '500',
+        },
+      })
+      
       reset()
       
       setTimeout(() => {
@@ -90,7 +108,7 @@ export default function SubmitModal({ open, onOpenChange, onSuccess }: SubmitMod
         if (onSuccess) {
           onSuccess()
         }
-      }, 1000)
+      }, 1500)
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to submit opportunity'
