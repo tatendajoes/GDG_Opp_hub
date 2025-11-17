@@ -26,6 +26,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import EditOpportunityModal from "./EditOpportunityModal"
 import {
   ShieldCheck,
   Briefcase,
@@ -61,19 +62,6 @@ interface PaginationInfo {
   total: number
   limit: number
   offset: number
-}
-
-interface EditFormState {
-  company_name: string
-  job_title: string
-  opportunity_type: OpportunityType
-  role_type: string
-  relevant_majors: string
-  deadline: string
-  requirements: string
-  location: string
-  description: string
-  status: "active" | "expired"
 }
 
 const PAGE_SIZE = 10
@@ -115,33 +103,6 @@ const formatDate = (value: string | null, fallback = "—") => {
   }
 }
 
-const formatDateInputValue = (value: string | null) => {
-  if (!value) return ""
-  const date = new Date(value)
-  return !Number.isNaN(date.getTime()) ? date.toISOString().split("T")[0] : ""
-}
-
-const parseRelevantMajors = (value: Opportunity["relevant_majors"]) => {
-  if (!value) return ""
-  if (Array.isArray(value)) {
-    return value
-      .filter((major): major is string => typeof major === "string")
-      .join(", ")
-  }
-  if (typeof value === "string") {
-    return value
-  }
-  return ""
-}
-
-const stringifyMajors = (value: string) => {
-  const majors = value
-    .split(",")
-    .map((major) => major.trim())
-    .filter(Boolean)
-  return majors.length > 0 ? majors : null
-}
-
 export default function AdminPanel() {
   const router = useRouter()
   const { user, loading: authLoading } = useAuth()
@@ -170,8 +131,6 @@ export default function AdminPanel() {
 
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [selectedOpportunity, setSelectedOpportunity] = useState<Opportunity | null>(null)
-  const [editForm, setEditForm] = useState<EditFormState | null>(null)
-  const [savingEdit, setSavingEdit] = useState(false)
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [opportunityToDelete, setOpportunityToDelete] = useState<Opportunity | null>(null)
@@ -335,74 +294,30 @@ export default function AdminPanel() {
 
   const openEditDialog = (opportunity: Opportunity) => {
     setSelectedOpportunity(opportunity)
-    setEditForm({
-      company_name: opportunity.company_name || "",
-      job_title: opportunity.job_title || "",
-      opportunity_type: opportunity.opportunity_type,
-      role_type: opportunity.role_type || "",
-      relevant_majors: parseRelevantMajors(opportunity.relevant_majors),
-      deadline: formatDateInputValue(opportunity.deadline),
-      requirements: opportunity.requirements || "",
-      location: opportunity.location || "",
-      description: opportunity.description || "",
-      status: opportunity.status,
-    })
     setEditDialogOpen(true)
   }
 
-  const closeEditDialog = () => {
-    if (savingEdit) return
-    setEditDialogOpen(false)
-    setSelectedOpportunity(null)
-    setEditForm(null)
-  }
-
-  const handleEditFieldChange = (
-    field: keyof EditFormState,
-    value: string
-  ) => {
-    setEditForm((prev) => (prev ? { ...prev, [field]: value } : prev))
-  }
-
-  const handleSaveOpportunity = async () => {
-    if (!selectedOpportunity || !editForm) return
-    setSavingEdit(true)
-    try {
-      const payload = {
-        company_name: editForm.company_name.trim(),
-        job_title: editForm.job_title.trim(),
-        opportunity_type: editForm.opportunity_type,
-        role_type: editForm.role_type.trim() || null,
-        relevant_majors: stringifyMajors(editForm.relevant_majors),
-        deadline: editForm.deadline ? new Date(editForm.deadline).toISOString() : null,
-        requirements: editForm.requirements.trim() || null,
-        location: editForm.location.trim() || null,
-        description: editForm.description.trim() || null,
-        status: editForm.status,
-      }
-
-      const response = await fetch(`/api/opportunities/${selectedOpportunity.id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      })
-
-      const result = await response.json().catch(() => ({}))
-      if (!response.ok) {
-        throw new Error(result.error || "Failed to update opportunity")
-      }
-
-      toast.success("Opportunity updated successfully")
-      closeEditDialog()
-      fetchOpportunities(currentPage)
-      fetchStats()
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to update opportunity")
-    } finally {
-      setSavingEdit(false)
+  const handleEditModalChange = (open: boolean) => {
+    setEditDialogOpen(open)
+    if (!open) {
+      setSelectedOpportunity(null)
     }
+  }
+
+  const handleEditSuccess = (updatedOpportunity: Opportunity) => {
+    setSelectedOpportunity(updatedOpportunity)
+    setOpportunities((prev) =>
+      prev.map((opportunity) =>
+        opportunity.id === updatedOpportunity.id ? updatedOpportunity : opportunity
+      )
+    )
+    setRecentSubmissions((prev) =>
+      prev.map((opportunity) =>
+        opportunity.id === updatedOpportunity.id ? updatedOpportunity : opportunity
+      )
+    )
+    fetchOpportunities(currentPage)
+    fetchStats()
   }
 
   const openDeleteDialog = (opportunity: Opportunity) => {
@@ -875,173 +790,12 @@ export default function AdminPanel() {
         </div>
       </section>
 
-      <Dialog open={editDialogOpen} onOpenChange={(open) => (open ? setEditDialogOpen(true) : closeEditDialog())}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
-          <DialogHeader>
-            <DialogTitle>Edit Opportunity</DialogTitle>
-            <DialogDescription>
-              Update the fields below and save your changes. All updates are logged.
-            </DialogDescription>
-          </DialogHeader>
-
-          {editForm && (
-            <div className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="company">Company name</Label>
-                  <Input
-                    id="company"
-                    value={editForm.company_name}
-                    onChange={(event) =>
-                      handleEditFieldChange("company_name", event.target.value)
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="job">Job title</Label>
-                  <Input
-                    id="job"
-                    value={editForm.job_title}
-                    onChange={(event) =>
-                      handleEditFieldChange("job_title", event.target.value)
-                    }
-                  />
-                </div>
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label>Opportunity type</Label>
-                  <Select
-                    value={editForm.opportunity_type}
-                    onValueChange={(value) =>
-                      handleEditFieldChange(
-                        "opportunity_type",
-                        value as OpportunityType
-                      )
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {OPPORTUNITY_TYPES.map((type) => (
-                        <SelectItem key={type} value={type}>
-                          {typeLabels[type]}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Status</Label>
-                  <Select
-                    value={editForm.status}
-                    onValueChange={(value) =>
-                      handleEditFieldChange(
-                        "status",
-                        value as "active" | "expired"
-                      )
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="active">Active</SelectItem>
-                      <SelectItem value="expired">Expired</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="deadline">Deadline</Label>
-                  <Input
-                    id="deadline"
-                    type="date"
-                    value={editForm.deadline}
-                    onChange={(event) =>
-                      handleEditFieldChange("deadline", event.target.value)
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="roleType">Role type</Label>
-                  <Input
-                    id="roleType"
-                    placeholder="e.g. Software Engineering"
-                    value={editForm.role_type}
-                    onChange={(event) =>
-                      handleEditFieldChange("role_type", event.target.value)
-                    }
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="location">Location</Label>
-                <Input
-                  id="location"
-                  value={editForm.location}
-                  onChange={(event) =>
-                    handleEditFieldChange("location", event.target.value)
-                  }
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="majors">Relevant majors</Label>
-                <textarea
-                  id="majors"
-                  className="min-h-[60px] w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:ring-offset-2"
-                  placeholder="Separate majors with commas"
-                  value={editForm.relevant_majors}
-                  onChange={(event) =>
-                    handleEditFieldChange("relevant_majors", event.target.value)
-                  }
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="requirements">Requirements</Label>
-                <textarea
-                  id="requirements"
-                  className="min-h-[80px] w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:ring-offset-2"
-                  value={editForm.requirements}
-                  onChange={(event) =>
-                    handleEditFieldChange("requirements", event.target.value)
-                  }
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
-                <textarea
-                  id="description"
-                  className="min-h-[120px] w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:ring-offset-2"
-                  value={editForm.description}
-                  onChange={(event) =>
-                    handleEditFieldChange("description", event.target.value)
-                  }
-                />
-              </div>
-            </div>
-          )}
-
-          <DialogFooter className="mt-6">
-            <Button variant="outline" onClick={closeEditDialog} disabled={savingEdit}>
-              Cancel
-            </Button>
-            <Button onClick={handleSaveOpportunity} disabled={savingEdit}>
-              {savingEdit && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Save Changes
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <EditOpportunityModal
+        open={editDialogOpen}
+        onOpenChange={handleEditModalChange}
+        opportunity={selectedOpportunity}
+        onSuccess={handleEditSuccess}
+      />
 
       <Dialog open={deleteDialogOpen} onOpenChange={(open) => (open ? setDeleteDialogOpen(true) : closeDeleteDialog())}>
         <DialogContent className="sm:max-w-md">
