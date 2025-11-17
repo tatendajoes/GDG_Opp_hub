@@ -5,19 +5,22 @@ import { useRouter } from 'next/navigation'
 import ProtectedRoute from '@/components/auth/ProtectedRoute'
 import { useAuth } from '@/hooks/useAuth'
 import { createClient } from '@/lib/supabase/client'
-import { User } from '@/types'
+import { Database } from '@/lib/supabase/types'
 import { Button } from '@/components/ui/button'
-import { Briefcase, Calendar, GraduationCap, Mail, Settings, User as UserIcon, Camera, Upload } from 'lucide-react'
+import { Briefcase, Calendar, GraduationCap, Mail, Settings, User as UserIcon, Camera, Upload, ArrowLeft } from 'lucide-react'
 import { format } from 'date-fns'
-import Navbar from '@/components/layout/Navbar'
-import PageHeader from '@/components/layout/PageHeader'
 import toast from 'react-hot-toast'
+
+export const dynamic = 'force-dynamic'
+
+type UserProfile = Database['public']['Tables']['users']['Row']
 
 export default function ProfilePage() {
   const { user } = useAuth()
+  const supabase = createClient()
   const router = useRouter()
   const [loading, setLoading] = useState(true)
-  const [profileData, setProfileData] = useState<User | null>(null)
+  const [profileData, setProfileData] = useState<UserProfile | null>(null)
   const [opportunitiesCount, setOpportunitiesCount] = useState(0)
   const [uploading, setUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -31,7 +34,6 @@ export default function ProfilePage() {
 
       try {
         setLoading(true)
-        const supabase = createClient()
 
         // Fetch user profile from users table
         const { data: userData, error: userError } = await supabase
@@ -78,7 +80,7 @@ export default function ProfilePage() {
       isMounted = false
       abortController.abort()
     }
-  }, [user?.id, user?.email])
+  }, [user?.id, user?.email, supabase])
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return 'N/A'
@@ -113,11 +115,11 @@ export default function ProfilePage() {
 
     try {
       setUploading(true)
-      const supabase = createClient()
 
-      // Create unique file name with user ID
+      // Create unique file name with user ID and timestamp
       const fileExt = file.name.split('.').pop()
-      const fileName = `${user.id}/avatar.${fileExt}`
+      const timestamp = Date.now()
+      const fileName = `${user.id}/avatar-${timestamp}.${fileExt}`
 
       // Delete old avatar if exists
       if (profileData?.avatar_url) {
@@ -125,7 +127,7 @@ export default function ProfilePage() {
         // URL format: https://xxx.supabase.co/storage/v1/object/public/avatars/path
         const urlParts = profileData.avatar_url.split('/public/avatars/')
         if (urlParts.length > 1) {
-          const storagePath = urlParts[1]
+          const storagePath = urlParts[1].split('?')[0] // Remove query params
           await supabase.storage
             .from('avatars')
             .remove([storagePath])
@@ -137,23 +139,23 @@ export default function ProfilePage() {
         .from('avatars')
         .upload(fileName, file, {
           cacheControl: '3600',
-          upsert: true
+          upsert: false // Use false to prevent overwriting; we use unique names
         })
 
       if (uploadError) {
         throw uploadError
       }
 
-      // Get public URL
+      // Get public URL with cache buster
       const { data } = supabase.storage
         .from('avatars')
         .getPublicUrl(fileName)
 
-      const publicUrl = data.publicUrl
+      const publicUrl = `${data.publicUrl}?t=${timestamp}`
 
       // Update user profile with avatar URL
-      const { error: updateError } = await (supabase
-        .from('users') as any)
+      const { error: updateError } = await supabase
+        .from('users')
         .update({ avatar_url: publicUrl })
         .eq('id', user.id)
 
@@ -191,162 +193,198 @@ export default function ProfilePage() {
     )
   }
 
+  if (!user || !profileData) {
+    return (
+      <ProtectedRoute>
+        <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 flex items-center justify-center">
+          <div className="text-center">
+            <p className="text-gray-600">Could not load profile data. Please try again later.</p>
+          </div>
+        </div>
+      </ProtectedRoute>
+    )
+  }
+
   return (
     <ProtectedRoute>
       <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50">
-        <Navbar />
-        <PageHeader
-          title="My Profile"
-          rightActions={
-            <Button
-              onClick={() => router.push('/settings')}
-              variant="outline"
-              size="sm"
-            >
-              <Settings className="h-4 w-4 mr-2" />
-              Edit Profile
-            </Button>
-          }
-        />
+        {/* Hero Section */}
+        <div className="relative">
+          {/* Cover Background */}
+          <div className="h-48 sm:h-56 bg-gradient-to-r from-purple-600 via-purple-500 to-blue-600 relative overflow-hidden">
+            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4xIj48cGF0aCBkPSJNMzYgMzRjMC0yLjIxIDEuNzktNCA0LTRzNCAxLjc5IDQgNC0xLjc5IDQtNCA0LTQtMS43OS00LTR6bTAgMTBjMC0yLjIxIDEuNzktNCA0LTRzNCAxLjc5IDQgNC0xLjc5IDQtNCA0LTQtMS43OS00LTR6TTI2IDM0YzAtMi4yMSAxLjc5LTQgNC00czQgMS43OSA0IDQtMS43OSA0LTQgNC00LTEuNzktNC00em0wIDEwYzAtMi4yMSAxLjc5LTQgNC00czQgMS43OSA0IDQtMS43OSA0LTQgNC00LTEuNzktNC00eiIvPjwvZz48L2c+PC9zdmc+')] opacity-30"></div>
+            
+            {/* Back Button */}
+            <div className="absolute top-4 left-4 sm:top-6 sm:left-6">
+              <Button
+                onClick={() => router.back()}
+                variant="outline"
+                size="sm"
+                className="bg-white/10 backdrop-blur-sm border-white/20 text-white hover:bg-white/20 hover:text-white"
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back
+              </Button>
+            </div>
 
-        {/* Main Content */}
-        <div className="container mx-auto px-4 py-8">
-          <div className="max-w-4xl mx-auto">
-            {/* Profile Card */}
-            <div className="bg-white rounded-lg shadow-md p-8 mb-6 border border-gray-200">
-              {/* Avatar and Name Section */}
-              <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 mb-8">
+            {/* Edit Profile Button */}
+            <div className="absolute top-4 right-4 sm:top-6 sm:right-6">
+              <Button
+                onClick={() => router.push('/settings')}
+                variant="outline"
+                size="sm"
+                className="bg-white/10 backdrop-blur-sm border-white/20 text-white hover:bg-white/20 hover:text-white"
+              >
+                <Settings className="h-4 w-4 mr-2" />
+                Edit Profile
+              </Button>
+            </div>
+          </div>
+
+          {/* Profile Info Container */}
+          <div className="container mx-auto px-4">
+            <div className="max-w-4xl mx-auto">
+              <div className="relative -mt-16 sm:-mt-20">
                 {/* Avatar */}
-                <div className="flex-shrink-0 relative group">
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
-                    onChange={handleFileChange}
-                    className="hidden"
-                  />
-                  {profileData?.avatar_url ? (
-                    <div className="relative">
-                      <img
-                        src={profileData.avatar_url}
-                        alt={profileData.name}
-                        className="w-24 h-24 rounded-full object-cover shadow-lg"
-                      />
-                      <button
-                        onClick={handleAvatarClick}
-                        disabled={uploading}
-                        className="absolute inset-0 w-24 h-24 rounded-full bg-black bg-opacity-0 group-hover:bg-opacity-50 flex items-center justify-center transition-all duration-200 cursor-pointer"
-                        title="Change profile picture"
-                        aria-label="Change profile picture"
-                      >
-                        <Camera className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={handleAvatarClick}
-                      disabled={uploading}
-                      className="relative w-24 h-24 rounded-full bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center text-white shadow-lg group-hover:shadow-xl transition-all duration-200 cursor-pointer"
-                      title="Upload profile picture"
-                      aria-label="Upload profile picture"
-                    >
-                      {uploading ? (
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
-                      ) : (
-                        <>
-                          <UserIcon className="w-12 h-12 group-hover:opacity-50 transition-opacity duration-200" />
-                          <Upload className="w-8 h-8 absolute opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
-                        </>
-                      )}
-                    </button>
-                  )}
-                  {uploading && (
-                    <div className="absolute -bottom-6 left-1/2 transform -translate-x-1/2 whitespace-nowrap">
-                      <p className="text-xs text-gray-500">Uploading...</p>
-                    </div>
-                  )}
+                <div className="flex justify-center mb-6">
+                  <div className="relative group cursor-pointer" onClick={handleAvatarClick}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={profileData?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.email}`}
+                      alt={profileData?.name || 'User'}
+                      className="w-32 h-32 sm:w-36 sm:h-36 rounded-full object-cover border-4 border-white shadow-xl"
+                    />
+                    
+                    {/* Hidden file input */}
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFileChange}
+                      className="hidden"
+                    />
+                    
+                    {/* Hover overlay */}
+                    {!uploading && (
+                      <div className="absolute inset-0 w-32 h-32 sm:w-36 sm:h-36 rounded-full bg-black bg-opacity-0 group-hover:bg-opacity-50 flex items-center justify-center transition-all duration-200">
+                        <Camera className="w-10 h-10 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+                      </div>
+                    )}
+                    
+                    {/* Uploading state */}
+                    {uploading && (
+                      <div className="absolute inset-0 w-32 h-32 sm:w-36 sm:h-36 rounded-full bg-black bg-opacity-50 flex flex-col items-center justify-center">
+                        <Upload className="w-8 h-8 text-white animate-bounce mb-2" />
+                        <p className="text-white text-xs font-medium">Uploading...</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
-                {/* Name and Role */}
-                <div className="flex-1 text-center sm:text-left">
-                  <h2 className="text-3xl font-bold text-gray-900 mb-2">
+                {/* Name and Badges */}
+                <div className="text-center mb-8">
+                  <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-3">
                     {profileData?.name || 'User'}
-                  </h2>
-                  <div className="flex flex-wrap gap-2 justify-center sm:justify-start">
-                    <span className="inline-block px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm font-semibold">
-                      {profileData?.role === 'admin' ? 'Admin' : 'Student'}
+                  </h1>
+                  <div className="flex flex-wrap gap-2 justify-center">
+                    <span className="inline-flex items-center px-4 py-1.5 bg-purple-100 text-purple-700 rounded-full text-sm font-semibold">
+                      {profileData?.role === 'admin' ? '👑 Admin' : '🎓 Student'}
                     </span>
                     {profileData?.major && (
-                      <span className="inline-block px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-semibold">
-                        {profileData.major}
+                      <span className="inline-flex items-center px-4 py-1.5 bg-blue-100 text-blue-700 rounded-full text-sm font-semibold">
+                        📚 {profileData.major}
                       </span>
                     )}
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
 
-              {/* Divider */}
-              <div className="border-t border-gray-200 my-6"></div>
-
-              {/* Information Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Email */}
-                <div className="flex items-start gap-3">
-                  <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
-                    <Mail className="w-5 h-5 text-purple-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500 font-medium">Email Address</p>
-                    <p className="text-gray-900 font-medium break-all">{profileData?.email || user?.email || 'N/A'}</p>
-                  </div>
-                </div>
-
-                {/* Major */}
-                {profileData?.major && (
+        {/* Main Content */}
+        <div className="container mx-auto px-4 pb-12">
+          <div className="max-w-4xl mx-auto">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+              {/* About Card */}
+              <div className="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition-shadow duration-200">
+                <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                  <UserIcon className="w-5 h-5 text-purple-600" />
+                  About
+                </h2>
+                <div className="space-y-4">
                   <div className="flex items-start gap-3">
-                    <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
-                      <GraduationCap className="w-5 h-5 text-blue-600" />
+                    <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-purple-100 flex items-center justify-center">
+                      <Mail className="w-5 h-5 text-purple-600" />
                     </div>
-                    <div>
-                      <p className="text-sm text-gray-500 font-medium">Major</p>
-                      <p className="text-gray-900 font-medium">{profileData.major}</p>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-gray-500 font-medium mb-1">Email Address</p>
+                      <p className="text-base text-gray-900 font-medium break-all">{profileData?.email || user?.email || 'N/A'}</p>
                     </div>
                   </div>
-                )}
 
-                {/* Account Created */}
-                <div className="flex items-start gap-3">
-                  <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
-                    <Calendar className="w-5 h-5 text-green-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500 font-medium">Member Since</p>
-                    <p className="text-gray-900 font-medium">{formatDate(profileData?.created_at || null)}</p>
+                  {profileData?.major && (
+                    <div className="flex items-start gap-3">
+                      <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center">
+                        <GraduationCap className="w-5 h-5 text-blue-600" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm text-gray-500 font-medium mb-1">Major</p>
+                        <p className="text-base text-gray-900 font-medium">{profileData.major}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex items-start gap-3">
+                    <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-green-100 flex items-center justify-center">
+                      <Calendar className="w-5 h-5 text-green-600" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm text-gray-500 font-medium mb-1">Member Since</p>
+                      <p className="text-base text-gray-900 font-medium">{formatDate(profileData?.created_at || null)}</p>
+                    </div>
                   </div>
                 </div>
+              </div>
 
-                {/* Opportunities Submitted */}
-                <div className="flex items-start gap-3">
-                  <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-orange-100 flex items-center justify-center">
-                    <Briefcase className="w-5 h-5 text-orange-600" />
+              {/* Stats Card */}
+              <div className="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition-shadow duration-200">
+                <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                  <Briefcase className="w-5 h-5 text-orange-600" />
+                  Statistics
+                </h2>
+                <div className="flex flex-col items-center justify-center py-8">
+                  <div className="w-20 h-20 rounded-full bg-gradient-to-br from-orange-100 to-orange-200 flex items-center justify-center mb-4">
+                    <Briefcase className="w-10 h-10 text-orange-600" />
                   </div>
-                  <div>
-                    <p className="text-sm text-gray-500 font-medium">Opportunities Submitted</p>
-                    <p className="text-gray-900 font-medium text-2xl">{opportunitiesCount}</p>
+                  <div className="text-center">
+                    <p className="text-5xl font-bold text-gray-900 mb-2">{opportunitiesCount}</p>
+                    <p className="text-sm text-gray-600 font-medium">
+                      {opportunitiesCount === 1 ? 'Opportunity' : 'Opportunities'} Submitted
+                    </p>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Stats Card */}
-            <div className="bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg shadow-md p-6 text-white">
-              <h3 className="text-lg font-semibold mb-2">Your Contribution</h3>
-              <p className="text-purple-100">
-                Thank you for being part of the GDG Opportunities Hub community!
-                {opportunitiesCount > 0
-                  ? ` You have shared ${opportunitiesCount} ${opportunitiesCount === 1 ? 'opportunity' : 'opportunities'} with fellow students.`
-                  : ' Share your first opportunity today!'}
-              </p>
+            {/* Contribution Card */}
+            <div className="bg-gradient-to-r from-purple-600 to-blue-600 rounded-xl shadow-md p-8 text-white">
+              <div className="flex items-start gap-4">
+                <div className="flex-shrink-0">
+                  <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                    <span className="text-2xl">🎉</span>
+                  </div>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-xl font-bold mb-2">Your Contribution</h3>
+                  <p className="text-purple-100 leading-relaxed">
+                    Thank you for being part of the GDG Opportunities Hub community!
+                    {opportunitiesCount > 0
+                      ? ` You have shared ${opportunitiesCount} ${opportunitiesCount === 1 ? 'opportunity' : 'opportunities'} with fellow students. Keep up the great work!`
+                      : ' Share your first opportunity today and help your fellow students discover amazing opportunities!'}
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         </div>

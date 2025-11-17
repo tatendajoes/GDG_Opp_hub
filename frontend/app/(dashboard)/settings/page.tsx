@@ -8,9 +8,10 @@ import { createClient } from '@/lib/supabase/client'
 import { User } from '@/types'
 import { Database } from '@/lib/supabase/types'
 import { Button } from '@/components/ui/button'
-import Navbar from '@/components/layout/Navbar'
-import PageHeader from '@/components/layout/PageHeader'
+import { User as UserIcon, MapPin, Shield, Lock, Calendar, Mail, GraduationCap, Globe, MapPinned, ArrowLeft } from 'lucide-react'
 import toast from 'react-hot-toast'
+
+export const dynamic = 'force-dynamic'
 
 type UserRow = Database["public"]["Tables"]["users"]["Row"]
 
@@ -20,7 +21,7 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [profileData, setProfileData] = useState<User | null>(null)
-  const [activeSection, setActiveSection] = useState<'basic' | 'account'>('basic')
+  const [activeSection, setActiveSection] = useState<'basic' | 'location' | 'account'>('basic')
 
   // Form states
   const [name, setName] = useState('')
@@ -32,9 +33,8 @@ export default function SettingsPage() {
   const [region, setRegion] = useState('')
   const [state, setState] = useState('')
 
-  // Edit states for each field
-  const [editingField, setEditingField] = useState<string | null>(null)
-  const [tempValue, setTempValue] = useState('')
+  // Track if form has changes
+  const [hasChanges, setHasChanges] = useState(false)
 
   useEffect(() => {
     const abortController = new AbortController()
@@ -62,7 +62,7 @@ export default function SettingsPage() {
           setName(userData.name || '')
           setEmail(userData.email || '')
           setMajor(userData.major || '')
-          setGender(userData.gender || '')
+          setGender((userData.gender || '') as 'male' | 'female' | 'other' | '')
           setBirthday(userData.birthday || '')
           setCountry(userData.country || '')
           setRegion(userData.region || '')
@@ -92,50 +92,42 @@ export default function SettingsPage() {
     }
   }, [user?.id])
 
-  const handleEdit = (field: string, currentValue: string) => {
-    setEditingField(field)
-    setTempValue(currentValue)
-  }
+  // Track changes
+  useEffect(() => {
+    if (!profileData) return
+    
+    const changed = 
+      name !== (profileData.name || '') ||
+      major !== (profileData.major || '') ||
+      gender !== (profileData.gender || '') ||
+      birthday !== (profileData.birthday || '') ||
+      country !== (profileData.country || '') ||
+      region !== (profileData.region || '') ||
+      state !== (profileData.state || '')
+    
+    setHasChanges(changed)
+  }, [name, major, gender, birthday, country, region, state, profileData])
 
-  const handleCancel = () => {
-    setEditingField(null)
-    setTempValue('')
-  }
-
-  const handleSave = async (field: string) => {
+  const handleSaveAll = async () => {
     if (!user?.id) return
+
+    if (!name.trim()) {
+      toast.error('Name cannot be empty')
+      return
+    }
 
     try {
       setSaving(true)
       const supabase = createClient()
 
-      const updates: any = {}
-
-      if (field === 'name') {
-        if (!tempValue.trim()) {
-          toast.error('Name cannot be empty')
-          return
-        }
-        updates.name = tempValue
-        setName(tempValue)
-      } else if (field === 'major') {
-        updates.major = tempValue || null
-        setMajor(tempValue)
-      } else if (field === 'gender') {
-        updates.gender = tempValue || null
-        setGender(tempValue as 'male' | 'female' | 'other' | '')
-      } else if (field === 'birthday') {
-        updates.birthday = tempValue || null
-        setBirthday(tempValue)
-      } else if (field === 'country') {
-        updates.country = tempValue || null
-        setCountry(tempValue)
-      } else if (field === 'region') {
-        updates.region = tempValue || null
-        setRegion(tempValue)
-      } else if (field === 'state') {
-        updates.state = tempValue || null
-        setState(tempValue)
+      const updates: any = {
+        name,
+        major: major || null,
+        gender: gender || null,
+        birthday: birthday || null,
+        country: country || null,
+        region: region || null,
+        state: state || null,
       }
 
       const { error } = await (supabase
@@ -146,14 +138,13 @@ export default function SettingsPage() {
       if (error) throw error
 
       setProfileData(prev => prev ? { ...prev, ...updates } : null)
-      setEditingField(null)
-      setTempValue('')
-      toast.success('Updated successfully!')
+      setHasChanges(false)
+      toast.success('Settings saved successfully!')
     } catch (err) {
       if (process.env.NODE_ENV === 'development') {
         console.error('Error updating profile:', err)
       }
-      toast.error(err instanceof Error ? err.message : 'Failed to update')
+      toast.error(err instanceof Error ? err.message : 'Failed to save settings')
     } finally {
       setSaving(false)
     }
@@ -195,495 +186,283 @@ export default function SettingsPage() {
   return (
     <ProtectedRoute>
       <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50">
-        <Navbar />
-        <PageHeader title="Settings" />
+        {/* Header */}
+        <div className="bg-white border-b border-gray-200">
+          <div className="container mx-auto px-4 py-6">
+            <div className="max-w-5xl mx-auto">
+              <div className="flex items-center gap-4 mb-2">
+                <Button
+                  onClick={() => router.back()}
+                  variant="ghost"
+                  size="sm"
+                  className="text-gray-600 hover:text-gray-900 -ml-2"
+                >
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back
+                </Button>
+              </div>
+              <h1 className="text-3xl font-bold text-gray-900">Settings</h1>
+              <p className="text-gray-600 mt-1">Manage your account settings and preferences</p>
+            </div>
+          </div>
+        </div>
 
         {/* Main Content */}
         <div className="container mx-auto px-4 py-8">
           <div className="max-w-5xl mx-auto">
-            <div className="flex flex-col md:flex-row gap-6">
+            <div className="flex flex-col lg:flex-row gap-6">
               {/* Sidebar Navigation */}
-              <div className="md:w-64 flex-shrink-0">
-                <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
-                  <nav className="flex flex-col">
+              <div className="lg:w-64 flex-shrink-0">
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden sticky top-6">
+                  <nav className="flex flex-col p-2">
                     <button
                       onClick={() => setActiveSection('basic')}
-                      className={`px-4 py-3 text-left font-medium transition-colors ${
+                      className={`flex items-center gap-3 px-4 py-3 rounded-lg text-left font-medium transition-all ${
                         activeSection === 'basic'
-                          ? 'bg-purple-50 text-purple-700 border-l-4 border-purple-600'
+                          ? 'bg-purple-50 text-purple-700 shadow-sm'
                           : 'text-gray-700 hover:bg-gray-50'
                       }`}
                     >
-                      Basic Info
+                      <UserIcon className="w-5 h-5" />
+                      <span>Personal Info</span>
+                    </button>
+                    <button
+                      onClick={() => setActiveSection('location')}
+                      className={`flex items-center gap-3 px-4 py-3 rounded-lg text-left font-medium transition-all ${
+                        activeSection === 'location'
+                          ? 'bg-purple-50 text-purple-700 shadow-sm'
+                          : 'text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      <MapPin className="w-5 h-5" />
+                      <span>Location</span>
                     </button>
                     <button
                       onClick={() => setActiveSection('account')}
-                      className={`px-4 py-3 text-left font-medium transition-colors ${
+                      className={`flex items-center gap-3 px-4 py-3 rounded-lg text-left font-medium transition-all ${
                         activeSection === 'account'
-                          ? 'bg-purple-50 text-purple-700 border-l-4 border-purple-600'
+                          ? 'bg-purple-50 text-purple-700 shadow-sm'
                           : 'text-gray-700 hover:bg-gray-50'
                       }`}
                     >
-                      Account
+                      <Shield className="w-5 h-5" />
+                      <span>Account</span>
                     </button>
                   </nav>
                 </div>
               </div>
 
               {/* Content Area */}
-              <div className="flex-1">
-                <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6 md:p-8">
-                  {/* Basic Information Section */}
-                  {activeSection === 'basic' && (
-                    <div>
-                      <div className="mb-6">
-                        <h2 className="text-2xl font-bold text-gray-900 mb-2">Basic Info</h2>
+              <div className="flex-1 pb-24">
+                {/* Personal Information Section */}
+                {activeSection === 'basic' && (
+                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 lg:p-8">
+                    <div className="mb-8">
+                      <h2 className="text-2xl font-bold text-gray-900 mb-2">Personal Information</h2>
+                      <p className="text-gray-600">Update your personal details and profile information</p>
+                    </div>
+
+                    <div className="space-y-6">
+                      {/* Name Field */}
+                      <div>
+                        <label htmlFor="name" className="block text-sm font-semibold text-gray-700 mb-2">
+                          Full Name <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          id="name"
+                          type="text"
+                          value={name}
+                          onChange={(e) => setName(e.target.value)}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                          placeholder="Your full name"
+                          required
+                        />
                       </div>
 
-                      <div className="space-y-6">
-                        {/* Name Field */}
-                        <div className="border-b border-gray-200 pb-6">
-                          <div className="flex items-start justify-between gap-4">
-                            <div className="flex-1">
-                              <label className="block text-sm font-medium text-gray-600 mb-2">
-                                Name
-                              </label>
-                              {editingField === 'name' ? (
-                                <div className="space-y-3">
-                                  <input
-                                    type="text"
-                                    value={tempValue}
-                                    onChange={(e) => setTempValue(e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                                    placeholder="Your full name"
-                                    autoFocus
-                                  />
-                                  <div className="flex gap-2">
-                                    <Button
-                                      onClick={() => handleSave('name')}
-                                      disabled={saving || !tempValue.trim()}
-                                      size="sm"
-                                      className="bg-purple-600 hover:bg-purple-700"
-                                    >
-                                      {saving ? 'Saving...' : 'Save'}
-                                    </Button>
-                                    <Button
-                                      onClick={handleCancel}
-                                      disabled={saving}
-                                      size="sm"
-                                      variant="outline"
-                                    >
-                                      Cancel
-                                    </Button>
-                                  </div>
-                                </div>
-                              ) : (
-                                <p className={name ? "text-gray-900" : "text-gray-400"}>{name || 'Not set'}</p>
-                              )}
-                            </div>
-                            {editingField !== 'name' && (
-                              <Button
-                                onClick={() => handleEdit('name', name)}
-                                variant="ghost"
-                                size="sm"
-                                className="text-purple-600 hover:text-purple-700 hover:bg-purple-50"
-                              >
-                                Edit
-                              </Button>
-                            )}
-                          </div>
+                      {/* Major Field */}
+                      <div>
+                        <label htmlFor="major" className="block text-sm font-semibold text-gray-700 mb-2">
+                          Major / Field of Study
+                        </label>
+                        <div className="relative">
+                          <GraduationCap className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                          <input
+                            id="major"
+                            type="text"
+                            value={major}
+                            onChange={(e) => setMajor(e.target.value)}
+                            className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                            placeholder="e.g., Computer Science"
+                          />
                         </div>
+                      </div>
 
-                        {/* Major Field */}
-                        <div className="border-b border-gray-200 pb-6">
-                          <div className="flex items-start justify-between gap-4">
-                            <div className="flex-1">
-                              <label className="block text-sm font-medium text-gray-600 mb-2">
-                                Major
-                              </label>
-                              {editingField === 'major' ? (
-                                <div className="space-y-3">
-                                  <input
-                                    type="text"
-                                    value={tempValue}
-                                    onChange={(e) => setTempValue(e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                                    placeholder="e.g., Computer Science"
-                                    autoFocus
-                                  />
-                                  <div className="flex gap-2">
-                                    <Button
-                                      onClick={() => handleSave('major')}
-                                      disabled={saving}
-                                      size="sm"
-                                      className="bg-purple-600 hover:bg-purple-700"
-                                    >
-                                      {saving ? 'Saving...' : 'Save'}
-                                    </Button>
-                                    <Button
-                                      onClick={handleCancel}
-                                      disabled={saving}
-                                      size="sm"
-                                      variant="outline"
-                                    >
-                                      Cancel
-                                    </Button>
-                                  </div>
-                                </div>
-                              ) : (
-                                <p className={major ? "text-gray-900" : "text-gray-400"}>{major || 'Add your major'}</p>
-                              )}
-                            </div>
-                            {editingField !== 'major' && (
-                              <Button
-                                onClick={() => handleEdit('major', major)}
-                                variant="ghost"
-                                size="sm"
-                                className="text-purple-600 hover:text-purple-700 hover:bg-purple-50"
-                              >
-                                Edit
-                              </Button>
-                            )}
-                          </div>
-                        </div>
+                      {/* Gender Field */}
+                      <div>
+                        <label htmlFor="gender" className="block text-sm font-semibold text-gray-700 mb-2">
+                          Gender
+                        </label>
+                        <select
+                          id="gender"
+                          value={gender}
+                          onChange={(e) => setGender(e.target.value as 'male' | 'female' | 'other' | '')}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                        >
+                          <option value="">Select gender</option>
+                          <option value="male">Male</option>
+                          <option value="female">Female</option>
+                          <option value="other">Other</option>
+                        </select>
+                      </div>
 
-                        {/* Gender Field */}
-                        <div className="border-b border-gray-200 pb-6">
-                          <div className="flex items-start justify-between gap-4">
-                            <div className="flex-1">
-                              <label className="block text-sm font-medium text-gray-600 mb-2">
-                                Gender
-                              </label>
-                              {editingField === 'gender' ? (
-                                <div className="space-y-3">
-                                  <select
-                                    value={tempValue}
-                                    onChange={(e) => setTempValue(e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                                    autoFocus
-                                  >
-                                    <option value="">Select gender</option>
-                                    <option value="male">Male</option>
-                                    <option value="female">Female</option>
-                                    <option value="other">Other</option>
-                                  </select>
-                                  <div className="flex gap-2">
-                                    <Button
-                                      onClick={() => handleSave('gender')}
-                                      disabled={saving}
-                                      size="sm"
-                                      className="bg-purple-600 hover:bg-purple-700"
-                                    >
-                                      {saving ? 'Saving...' : 'Save'}
-                                    </Button>
-                                    <Button
-                                      onClick={handleCancel}
-                                      disabled={saving}
-                                      size="sm"
-                                      variant="outline"
-                                    >
-                                      Cancel
-                                    </Button>
-                                  </div>
-                                </div>
-                              ) : (
-                                <p className={gender ? "text-gray-900 capitalize" : "text-gray-400"}>
-                                  {gender || 'Not specified'}
-                                </p>
-                              )}
-                            </div>
-                            {editingField !== 'gender' && (
-                              <Button
-                                onClick={() => handleEdit('gender', gender)}
-                                variant="ghost"
-                                size="sm"
-                                className="text-purple-600 hover:text-purple-700 hover:bg-purple-50"
-                              >
-                                Edit
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Birthday Field */}
-                        <div className="border-b border-gray-200 pb-6">
-                          <div className="flex items-start justify-between gap-4">
-                            <div className="flex-1">
-                              <label className="block text-sm font-medium text-gray-600 mb-2">
-                                Birthday
-                              </label>
-                              {editingField === 'birthday' ? (
-                                <div className="space-y-3">
-                                  <input
-                                    type="date"
-                                    value={tempValue}
-                                    onChange={(e) => setTempValue(e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                                    autoFocus
-                                  />
-                                  <div className="flex gap-2">
-                                    <Button
-                                      onClick={() => handleSave('birthday')}
-                                      disabled={saving}
-                                      size="sm"
-                                      className="bg-purple-600 hover:bg-purple-700"
-                                    >
-                                      {saving ? 'Saving...' : 'Save'}
-                                    </Button>
-                                    <Button
-                                      onClick={handleCancel}
-                                      disabled={saving}
-                                      size="sm"
-                                      variant="outline"
-                                    >
-                                      Cancel
-                                    </Button>
-                                  </div>
-                                </div>
-                              ) : (
-                                <p className={birthday ? "text-gray-900" : "text-gray-400"}>
-                                  {birthday ? new Date(birthday).toLocaleDateString('en-US', {
-                                    year: 'numeric',
-                                    month: 'long',
-                                    day: 'numeric'
-                                  }) : 'Not set'}
-                                </p>
-                              )}
-                            </div>
-                            {editingField !== 'birthday' && (
-                              <Button
-                                onClick={() => handleEdit('birthday', birthday)}
-                                variant="ghost"
-                                size="sm"
-                                className="text-purple-600 hover:text-purple-700 hover:bg-purple-50"
-                              >
-                                Edit
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Country Field */}
-                        <div className="border-b border-gray-200 pb-6">
-                          <div className="flex items-start justify-between gap-4">
-                            <div className="flex-1">
-                              <label className="block text-sm font-medium text-gray-600 mb-2">
-                                Country
-                              </label>
-                              {editingField === 'country' ? (
-                                <div className="space-y-3">
-                                  <select
-                                    value={tempValue}
-                                    onChange={(e) => setTempValue(e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                                    autoFocus
-                                  >
-                                    <option value="">Select country</option>
-                                    <option value="United States">United States</option>
-                                    <option value="Canada">Canada</option>
-                                    <option value="United Kingdom">United Kingdom</option>
-                                    <option value="Australia">Australia</option>
-                                    <option value="Germany">Germany</option>
-                                    <option value="France">France</option>
-                                    <option value="India">India</option>
-                                    <option value="China">China</option>
-                                    <option value="Japan">Japan</option>
-                                    <option value="Nigeria">Nigeria</option>
-                                    <option value="Other">Other</option>
-                                  </select>
-                                  <div className="flex gap-2">
-                                    <Button
-                                      onClick={() => handleSave('country')}
-                                      disabled={saving}
-                                      size="sm"
-                                      className="bg-purple-600 hover:bg-purple-700"
-                                    >
-                                      {saving ? 'Saving...' : 'Save'}
-                                    </Button>
-                                    <Button
-                                      onClick={handleCancel}
-                                      disabled={saving}
-                                      size="sm"
-                                      variant="outline"
-                                    >
-                                      Cancel
-                                    </Button>
-                                  </div>
-                                </div>
-                              ) : (
-                                <p className={country ? "text-gray-900" : "text-gray-400"}>
-                                  {country || 'Not specified'}
-                                </p>
-                              )}
-                            </div>
-                            {editingField !== 'country' && (
-                              <Button
-                                onClick={() => handleEdit('country', country)}
-                                variant="ghost"
-                                size="sm"
-                                className="text-purple-600 hover:text-purple-700 hover:bg-purple-50"
-                              >
-                                Edit
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Region Field */}
-                        <div className="border-b border-gray-200 pb-6">
-                          <div className="flex items-start justify-between gap-4">
-                            <div className="flex-1">
-                              <label className="block text-sm font-medium text-gray-600 mb-2">
-                                Region/Province
-                              </label>
-                              {editingField === 'region' ? (
-                                <div className="space-y-3">
-                                  <input
-                                    type="text"
-                                    value={tempValue}
-                                    onChange={(e) => setTempValue(e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                                    placeholder="e.g., Ontario, California"
-                                    autoFocus
-                                  />
-                                  <div className="flex gap-2">
-                                    <Button
-                                      onClick={() => handleSave('region')}
-                                      disabled={saving}
-                                      size="sm"
-                                      className="bg-purple-600 hover:bg-purple-700"
-                                    >
-                                      {saving ? 'Saving...' : 'Save'}
-                                    </Button>
-                                    <Button
-                                      onClick={handleCancel}
-                                      disabled={saving}
-                                      size="sm"
-                                      variant="outline"
-                                    >
-                                      Cancel
-                                    </Button>
-                                  </div>
-                                </div>
-                              ) : (
-                                <p className={region ? "text-gray-900" : "text-gray-400"}>
-                                  {region || 'Not specified'}
-                                </p>
-                              )}
-                            </div>
-                            {editingField !== 'region' && (
-                              <Button
-                                onClick={() => handleEdit('region', region)}
-                                variant="ghost"
-                                size="sm"
-                                className="text-purple-600 hover:text-purple-700 hover:bg-purple-50"
-                              >
-                                Edit
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* State Field */}
-                        <div className="pb-6">
-                          <div className="flex items-start justify-between gap-4">
-                            <div className="flex-1">
-                              <label className="block text-sm font-medium text-gray-600 mb-2">
-                                State/City
-                              </label>
-                              {editingField === 'state' ? (
-                                <div className="space-y-3">
-                                  <input
-                                    type="text"
-                                    value={tempValue}
-                                    onChange={(e) => setTempValue(e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                                    placeholder="e.g., Toronto, Los Angeles"
-                                    autoFocus
-                                  />
-                                  <div className="flex gap-2">
-                                    <Button
-                                      onClick={() => handleSave('state')}
-                                      disabled={saving}
-                                      size="sm"
-                                      className="bg-purple-600 hover:bg-purple-700"
-                                    >
-                                      {saving ? 'Saving...' : 'Save'}
-                                    </Button>
-                                    <Button
-                                      onClick={handleCancel}
-                                      disabled={saving}
-                                      size="sm"
-                                      variant="outline"
-                                    >
-                                      Cancel
-                                    </Button>
-                                  </div>
-                                </div>
-                              ) : (
-                                <p className={state ? "text-gray-900" : "text-gray-400"}>
-                                  {state || 'Not specified'}
-                                </p>
-                              )}
-                            </div>
-                            {editingField !== 'state' && (
-                              <Button
-                                onClick={() => handleEdit('state', state)}
-                                variant="ghost"
-                                size="sm"
-                                className="text-purple-600 hover:text-purple-700 hover:bg-purple-50"
-                              >
-                                Edit
-                              </Button>
-                            )}
-                          </div>
+                      {/* Birthday Field */}
+                      <div>
+                        <label htmlFor="birthday" className="block text-sm font-semibold text-gray-700 mb-2">
+                          Birthday
+                        </label>
+                        <div className="relative">
+                          <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                          <input
+                            id="birthday"
+                            type="date"
+                            value={birthday}
+                            onChange={(e) => setBirthday(e.target.value)}
+                            className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                          />
                         </div>
                       </div>
                     </div>
-                  )}
+                  </div>
+                )}
 
-                  {/* Account Section */}
-                  {activeSection === 'account' && (
-                    <div>
-                      <div className="mb-6">
-                        <h2 className="text-2xl font-bold text-gray-900 mb-2">Account Settings</h2>
-                        <p className="text-gray-600">Manage your account preferences</p>
+                {/* Location Information Section */}
+                {activeSection === 'location' && (
+                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 lg:p-8">
+                    <div className="mb-8">
+                      <h2 className="text-2xl font-bold text-gray-900 mb-2">Location Information</h2>
+                      <p className="text-gray-600">{"Let us know where you're based"}</p>
+                    </div>
+
+                    <div className="space-y-6">
+                      {/* Country Field */}
+                      <div>
+                        <label htmlFor="country" className="block text-sm font-semibold text-gray-700 mb-2">
+                          Country
+                        </label>
+                        <div className="relative">
+                          <Globe className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                          <select
+                            id="country"
+                            value={country}
+                            onChange={(e) => setCountry(e.target.value)}
+                            className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all appearance-none"
+                          >
+                            <option value="">Select country</option>
+                            <option value="United States">United States</option>
+                            <option value="Canada">Canada</option>
+                            <option value="United Kingdom">United Kingdom</option>
+                            <option value="Australia">Australia</option>
+                            <option value="Germany">Germany</option>
+                            <option value="France">France</option>
+                            <option value="India">India</option>
+                            <option value="China">China</option>
+                            <option value="Japan">Japan</option>
+                            <option value="Nigeria">Nigeria</option>
+                            <option value="South Africa">South Africa</option>
+                            <option value="Brazil">Brazil</option>
+                            <option value="Mexico">Mexico</option>
+                            <option value="Other">Other</option>
+                          </select>
+                        </div>
                       </div>
 
-                      <div className="space-y-6">
-                        {/* Email Field (Read-only) */}
-                        <div>
-                          <label htmlFor="email" className="block text-sm font-semibold text-gray-700 mb-2">
-                            Email Address
-                          </label>
+                      {/* Region/Province Field */}
+                      <div>
+                        <label htmlFor="region" className="block text-sm font-semibold text-gray-700 mb-2">
+                          Region / Province
+                        </label>
+                        <div className="relative">
+                          <MapPinned className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                          <input
+                            id="region"
+                            type="text"
+                            value={region}
+                            onChange={(e) => setRegion(e.target.value)}
+                            className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                            placeholder="e.g., Ontario, California"
+                          />
+                        </div>
+                      </div>
+
+                      {/* State/City Field */}
+                      <div>
+                        <label htmlFor="state" className="block text-sm font-semibold text-gray-700 mb-2">
+                          State / City
+                        </label>
+                        <div className="relative">
+                          <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                          <input
+                            id="state"
+                            type="text"
+                            value={state}
+                            onChange={(e) => setState(e.target.value)}
+                            className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                            placeholder="e.g., Toronto, Los Angeles"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Account Settings Section */}
+                {activeSection === 'account' && (
+                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 lg:p-8">
+                    <div className="mb-8">
+                      <h2 className="text-2xl font-bold text-gray-900 mb-2">Account Settings</h2>
+                      <p className="text-gray-600">Manage your account security and preferences</p>
+                    </div>
+
+                    <div className="space-y-8">
+                      {/* Email Field (Read-only) */}
+                      <div>
+                        <label htmlFor="email" className="block text-sm font-semibold text-gray-700 mb-2">
+                          Email Address
+                        </label>
+                        <div className="relative">
+                          <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                           <input
                             id="email"
                             type="email"
                             value={email}
                             disabled
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"
+                            className="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"
                           />
-                          <p className="mt-1 text-sm text-gray-500">
-                            Email cannot be changed at this time
-                          </p>
                         </div>
+                        <p className="mt-2 text-sm text-gray-500">
+                          {"Your email can't be changed at this time"}
+                        </p>
+                      </div>
 
-                        {/* Role Display */}
-                        <div>
-                          <label className="block text-sm font-semibold text-gray-700 mb-2">
-                            Account Role
-                          </label>
-                          <div className="inline-block px-4 py-2 bg-purple-100 text-purple-800 rounded-full text-sm font-semibold">
-                            {profileData?.role === 'admin' ? 'Admin' : 'Student'}
-                          </div>
+                      {/* Role Display */}
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-3">
+                          Account Role
+                        </label>
+                        <div className="inline-flex items-center px-4 py-2 bg-purple-100 text-purple-700 rounded-lg font-semibold">
+                          <Shield className="w-4 h-4 mr-2" />
+                          {profileData?.role === 'admin' ? 'Admin' : 'Student'}
                         </div>
+                      </div>
 
-                        {/* Account Created */}
-                        <div>
-                          <label className="block text-sm font-semibold text-gray-700 mb-2">
-                            Account Created
-                          </label>
-                          <p className="text-gray-600">
+                      {/* Account Created */}
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                          Member Since
+                        </label>
+                        <div className="flex items-center gap-2 text-gray-600">
+                          <Calendar className="w-5 h-5 text-gray-400" />
+                          <span>
                             {profileData?.created_at
                               ? new Date(profileData.created_at).toLocaleDateString('en-US', {
                                   year: 'numeric',
@@ -691,37 +470,68 @@ export default function SettingsPage() {
                                   day: 'numeric'
                                 })
                               : 'N/A'}
-                          </p>
-                        </div>
-
-                        {/* Divider */}
-                        <div className="border-t border-gray-200 my-6"></div>
-
-                        {/* Password Section */}
-                        <div>
-                          <label className="block text-sm font-semibold text-gray-700 mb-2">
-                            Password
-                          </label>
-                          <p className="text-gray-600 mb-3">
-                            Manage your password and account security
-                          </p>
-                          <Button
-                            onClick={handlePasswordReset}
-                            variant="outline"
-                            size="sm"
-                            className="text-purple-600 border-purple-600 hover:bg-purple-50"
-                          >
-                            Change Password
-                          </Button>
+                          </span>
                         </div>
                       </div>
+
+                      {/* Divider */}
+                      <div className="border-t border-gray-200"></div>
+
+                      {/* Password Section */}
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                          Password
+                        </label>
+                        <p className="text-gray-600 mb-4">
+                          Manage your password and account security
+                        </p>
+                        <Button
+                          onClick={handlePasswordReset}
+                          variant="outline"
+                          className="text-purple-600 border-purple-600 hover:bg-purple-50 hover:text-purple-700"
+                        >
+                          <Lock className="w-4 h-4 mr-2" />
+                          Change Password
+                        </Button>
+                      </div>
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
         </div>
+
+        {/* Sticky Save Button */}
+        {(activeSection === 'basic' || activeSection === 'location') && (
+          <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-50">
+            <div className="container mx-auto px-4 py-4">
+              <div className="max-w-5xl mx-auto flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  {hasChanges && (
+                    <span className="text-sm text-gray-600">
+                      You have unsaved changes
+                    </span>
+                  )}
+                </div>
+                <Button
+                  onClick={handleSaveAll}
+                  disabled={saving || !hasChanges || !name.trim()}
+                  className="bg-purple-600 hover:bg-purple-700 text-white px-8 py-2.5 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {saving ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Saving...
+                    </>
+                  ) : (
+                    'Save Changes'
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </ProtectedRoute>
   )

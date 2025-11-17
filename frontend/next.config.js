@@ -4,7 +4,20 @@ const path = require('path')
 const nextConfig = {
   reactStrictMode: true,
   images: {
-    domains: [],
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'fhcrlxksmamlgsaspsed.supabase.co',
+        port: '',
+        pathname: '/storage/v1/object/public/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'api.dicebear.com',
+        port: '',
+        pathname: '/7.x/**',
+      },
+    ],
   },
   webpack: (config, { isServer }) => {
     // Ensure modules are resolved from frontend node_modules
