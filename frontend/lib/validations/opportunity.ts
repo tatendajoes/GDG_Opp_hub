@@ -7,7 +7,7 @@ export const submitOpportunitySchema = z.object({
     .min(1, "URL is required")
     .url("Please enter a valid URL (e.g., https://example.com)"),
   company_name: z.string().optional(),
-  opportunity_type: z.enum(OPPORTUNITY_TYPES as [string, ...string[]], {
+  opportunity_type: z.enum(OPPORTUNITY_TYPES as unknown as [string, ...string[]], {
     errorMap: () => ({ message: "Please select an opportunity type" }),
   }),
 })

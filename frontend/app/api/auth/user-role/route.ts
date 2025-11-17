@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
+import { Database } from "@/lib/supabase/types"
+
+type UserRole = Database["public"]["Tables"]["users"]["Row"]["role"]
 
 export async function GET() {
   try {
@@ -19,7 +22,7 @@ export async function GET() {
       .from('users')
       .select('role')
       .eq('id', user.id)
-      .single()
+      .single<{ role: UserRole }>()
 
     if (userError || !userData) {
       return NextResponse.json(
