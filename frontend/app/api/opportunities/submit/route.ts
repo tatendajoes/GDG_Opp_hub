@@ -55,11 +55,12 @@ export async function POST(request: NextRequest) {
     // Step 1: Check if URL already exists
     const { data: existingOpportunity } = await (supabase
       .from('opportunities') as any)
-      .select('id, job_title, company_name')
+      .select('id, job_title, company_name, status, expired_at')
       .eq('url', url)
       .maybeSingle()
 
-    if (existingOpportunity) {
+    // If URL exists and is active, reject as duplicate
+    if (existingOpportunity && existingOpportunity.status === 'active') {
       return NextResponse.json(
         { 
           error: "Duplicate opportunity",
@@ -67,6 +68,23 @@ export async function POST(request: NextRequest) {
         },
         { status: 409 }
       )
+    }
+
+    // If URL exists but is expired, delete it to allow resubmission
+    // This allows the same role to be resubmitted if it opens again
+    if (existingOpportunity && existingOpportunity.status === 'expired') {
+      console.log(`[Submit] Found expired opportunity with same URL, deleting to allow resubmission`)
+      const { error: deleteError } = await supabase
+        .from('opportunities')
+        .delete()
+        .eq('id', existingOpportunity.id)
+      
+      if (deleteError) {
+        console.error(`[Submit] Failed to delete expired opportunity:`, deleteError)
+        // Continue anyway - the insert might still work if there's a race condition
+      } else {
+        console.log(`[Submit] Deleted expired opportunity (ID: ${existingOpportunity.id})`)
+      }
     }
 
     // Step 2: Scrape the URL (or use manual content)
