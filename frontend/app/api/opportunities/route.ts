@@ -70,7 +70,6 @@ export async function GET(request: NextRequest) {
           `job_title.ilike.%${ilikeQuery}%`,
           `role_type.ilike.%${ilikeQuery}%`,
           `location.ilike.%${ilikeQuery}%`,
-          `opportunity_type.ilike.%${ilikeQuery}%`,
           `description.ilike.%${ilikeQuery}%`,
           `requirements.ilike.%${ilikeQuery}%`,
         ].join(',')
