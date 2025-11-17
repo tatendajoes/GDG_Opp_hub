@@ -159,7 +159,7 @@ export async function scrapeWithPuppeteer(
       try {
         const element = await page.$(selector);
         if (element) {
-          const text = await page.evaluate(el => el?.textContent || '', element);
+          const text = await page.evaluate((el: any) => el?.textContent || '', element);
           if (text && text.trim().length > 200) {
             content = text;
             break;

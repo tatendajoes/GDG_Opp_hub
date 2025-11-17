@@ -16,6 +16,12 @@ export interface Database {
           name: string
           major: string | null
           role: 'student' | 'admin'
+          avatar_url: string | null
+          gender: 'male' | 'female' | 'other' | null
+          birthday: string | null
+          country: string | null
+          region: string | null
+          state: string | null
           created_at: string
           updated_at: string
         }
@@ -25,6 +31,12 @@ export interface Database {
           name: string
           major?: string | null
           role?: 'student' | 'admin'
+          avatar_url?: string | null
+          gender?: 'male' | 'female' | 'other' | null
+          birthday?: string | null
+          country?: string | null
+          region?: string | null
+          state?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -34,6 +46,12 @@ export interface Database {
           name?: string
           major?: string | null
           role?: 'student' | 'admin'
+          avatar_url?: string | null
+          gender?: 'male' | 'female' | 'other' | null
+          birthday?: string | null
+          country?: string | null
+          region?: string | null
+          state?: string | null
           created_at?: string
           updated_at?: string
         }
