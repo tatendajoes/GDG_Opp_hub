@@ -22,6 +22,7 @@ export async function GET(request: NextRequest) {
     // Parse query parameters
     const searchParams = request.nextUrl.searchParams
     const type = searchParams.get('type') as OpportunityType | null
+    const majors = searchParams.get('majors')
     const status = (searchParams.get('status') as OpportunityStatus) || 'active'
     const sort = (searchParams.get('sort') as SortOption) || 'deadline-asc'
     const limit = Math.min(parseInt(searchParams.get('limit') || '20'), 100)
@@ -49,6 +50,20 @@ export async function GET(request: NextRequest) {
         query = query.eq('opportunity_type', types[0])
       } else {
         query = query.in('opportunity_type', types)
+      }
+    }
+
+    // Apply major filter (comma separated values)
+    if (majors) {
+      const majorList = majors.split(',').map(m => m.trim()).filter(Boolean)
+
+      if (majorList.length === 1) {
+        query = query.contains('relevant_majors', [majorList[0]])
+      } else if (majorList.length > 1) {
+        const orFilters = majorList
+          .map((major) => `relevant_majors.cs.${JSON.stringify([major])}`)
+          .join(',')
+        query = query.or(orFilters)
       }
     }
 
