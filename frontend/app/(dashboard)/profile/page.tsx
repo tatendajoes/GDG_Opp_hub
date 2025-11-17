@@ -7,9 +7,9 @@ import { useAuth } from '@/hooks/useAuth'
 import { createClient } from '@/lib/supabase/client'
 import { User } from '@/types'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft, Briefcase, Calendar, GraduationCap, Mail, Settings, User as UserIcon, Camera, Upload } from 'lucide-react'
+import { Briefcase, Calendar, GraduationCap, Mail, Settings, User as UserIcon, Camera, Upload } from 'lucide-react'
 import { format } from 'date-fns'
-import ProfileDropdown from '@/components/layout/ProfileDropdown'
+import PageHeader from '@/components/layout/PageHeader'
 import toast from 'react-hot-toast'
 
 export default function ProfilePage() {
@@ -33,12 +33,11 @@ export default function ProfilePage() {
         const supabase = createClient()
 
         // Fetch user profile from users table
-        const { data: userData, error: userError } = await (supabase
+        const { data: userData, error: userError } = await supabase
           .from('users')
           .select('*')
           .eq('id', user.id)
-          .abortSignal(abortController.signal)
-          .single() as any)
+          .single()
 
         if (userError) throw userError
 
@@ -47,7 +46,6 @@ export default function ProfilePage() {
           .from('opportunities')
           .select('*', { count: 'exact', head: true })
           .eq('submitted_by', user.id)
-          .abortSignal(abortController.signal)
 
         if (countError && process.env.NODE_ENV === 'development') {
           console.error('Error fetching opportunities count:', countError)
@@ -122,11 +120,14 @@ export default function ProfilePage() {
 
       // Delete old avatar if exists
       if (profileData?.avatar_url) {
-        const oldPath = profileData.avatar_url.split('/').pop()
-        if (oldPath) {
+        // Extract storage path from public URL
+        // URL format: https://xxx.supabase.co/storage/v1/object/public/avatars/path
+        const urlParts = profileData.avatar_url.split('/public/avatars/')
+        if (urlParts.length > 1) {
+          const storagePath = urlParts[1]
           await supabase.storage
             .from('avatars')
-            .remove([`${user.id}/${oldPath}`])
+            .remove([storagePath])
         }
       }
 
@@ -192,38 +193,19 @@ export default function ProfilePage() {
   return (
     <ProtectedRoute>
       <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50">
-        {/* Header */}
-        <div className="bg-white shadow-sm border-b border-gray-200">
-          <div className="container mx-auto px-4 py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <Button
-                  onClick={() => router.back()}
-                  variant="ghost"
-                  size="sm"
-                  className="text-gray-600 hover:text-purple-600"
-                >
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Back
-                </Button>
-                <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
-                  My Profile
-                </h1>
-              </div>
-              <div className="flex items-center gap-3">
-                <Button
-                  onClick={() => router.push('/settings')}
-                  variant="outline"
-                  size="sm"
-                >
-                  <Settings className="h-4 w-4 mr-2" />
-                  Edit Profile
-                </Button>
-                <ProfileDropdown />
-              </div>
-            </div>
-          </div>
-        </div>
+        <PageHeader
+          title="My Profile"
+          rightActions={
+            <Button
+              onClick={() => router.push('/settings')}
+              variant="outline"
+              size="sm"
+            >
+              <Settings className="h-4 w-4 mr-2" />
+              Edit Profile
+            </Button>
+          }
+        />
 
         {/* Main Content */}
         <div className="container mx-auto px-4 py-8">
@@ -253,6 +235,7 @@ export default function ProfilePage() {
                         disabled={uploading}
                         className="absolute inset-0 w-24 h-24 rounded-full bg-black bg-opacity-0 group-hover:bg-opacity-50 flex items-center justify-center transition-all duration-200 cursor-pointer"
                         title="Change profile picture"
+                        aria-label="Change profile picture"
                       >
                         <Camera className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
                       </button>
@@ -263,6 +246,7 @@ export default function ProfilePage() {
                       disabled={uploading}
                       className="relative w-24 h-24 rounded-full bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center text-white shadow-lg group-hover:shadow-xl transition-all duration-200 cursor-pointer"
                       title="Upload profile picture"
+                      aria-label="Upload profile picture"
                     >
                       {uploading ? (
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>

@@ -141,7 +141,7 @@ export async function scrapeWithPlaywright(
 
     // Block unnecessary resources for faster scraping
     if (blockResources) {
-      await page.route('**/*', (route) => {
+      await page.route('**/*', (route: any) => {
         const resourceType = route.request().resourceType();
         if (['image', 'stylesheet', 'font', 'media'].includes(resourceType)) {
           route.abort();
@@ -191,7 +191,7 @@ export async function scrapeWithPlaywright(
       try {
         const element = await page.$(selector);
         if (element) {
-          const text = await element.textContent();
+          const text = await (element as any).textContent();
           if (text && text.trim().length > 200) {
             content = text;
             break;

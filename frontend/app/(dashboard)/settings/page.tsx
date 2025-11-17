@@ -6,10 +6,12 @@ import ProtectedRoute from '@/components/auth/ProtectedRoute'
 import { useAuth } from '@/hooks/useAuth'
 import { createClient } from '@/lib/supabase/client'
 import { User } from '@/types'
+import { Database } from '@/lib/supabase/types'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft } from 'lucide-react'
-import ProfileDropdown from '@/components/layout/ProfileDropdown'
+import PageHeader from '@/components/layout/PageHeader'
 import toast from 'react-hot-toast'
+
+type UserRow = Database["public"]["Tables"]["users"]["Row"]
 
 export default function SettingsPage() {
   const { user } = useAuth()
@@ -44,26 +46,27 @@ export default function SettingsPage() {
         setLoading(true)
         const supabase = createClient()
 
-        const { data: userData, error: userError} = await (supabase
+        const { data: userData, error: userError } = await supabase
           .from('users')
           .select('*')
           .eq('id', user.id)
-          .abortSignal(abortController.signal)
-          .single() as any)
+          .single<UserRow>()
 
         if (userError) throw userError
 
         if (!isMounted) return
 
-        setProfileData(userData)
-        setName(userData.name || '')
-        setEmail(userData.email || '')
-        setMajor(userData.major || '')
-        setGender(userData.gender || '')
-        setBirthday(userData.birthday || '')
-        setCountry(userData.country || '')
-        setRegion(userData.region || '')
-        setState(userData.state || '')
+        if (userData) {
+          setProfileData(userData)
+          setName(userData.name || '')
+          setEmail(userData.email || '')
+          setMajor(userData.major || '')
+          setGender(userData.gender || '')
+          setBirthday(userData.birthday || '')
+          setCountry(userData.country || '')
+          setRegion(userData.region || '')
+          setState(userData.state || '')
+        }
       } catch (err) {
         if (err instanceof Error && err.name === 'AbortError') return
 
@@ -191,28 +194,7 @@ export default function SettingsPage() {
   return (
     <ProtectedRoute>
       <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50">
-        {/* Header */}
-        <div className="bg-white shadow-sm border-b border-gray-200">
-          <div className="container mx-auto px-4 py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <Button
-                  onClick={() => router.back()}
-                  variant="ghost"
-                  size="sm"
-                  className="text-gray-600 hover:text-purple-600"
-                >
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Back
-                </Button>
-                <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
-                  Settings
-                </h1>
-              </div>
-              <ProfileDropdown />
-            </div>
-          </div>
-        </div>
+        <PageHeader title="Settings" />
 
         {/* Main Content */}
         <div className="container mx-auto px-4 py-8">

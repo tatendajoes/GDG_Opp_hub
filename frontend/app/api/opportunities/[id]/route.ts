@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
+import { Database } from "@/lib/supabase/types"
+
+type UserRole = Database["public"]["Tables"]["users"]["Row"]["role"]
+type OpportunityUpdate = Database["public"]["Tables"]["opportunities"]["Update"]
 
 interface RouteParams {
   params: { id: string }
@@ -96,7 +100,7 @@ export async function PUT(
       .from('users')
       .select('role')
       .eq('id', user.id)
-      .single()
+      .single<{ role: UserRole }>()
 
     if (userError || !userData || userData.role !== 'admin') {
       return NextResponse.json(
@@ -122,16 +126,18 @@ export async function PUT(
       'status'
     ]
 
-    const updateData: Record<string, any> = {}
+    const updateData: Partial<OpportunityUpdate> = {}
     for (const field of allowedFields) {
       if (field in body) {
-        updateData[field] = body[field]
+        updateData[field as keyof OpportunityUpdate] = body[field]
       }
     }
 
     // Update opportunity
+    // TypeScript can't properly infer update types, but runtime types are correct
     const { data, error } = await supabase
       .from('opportunities')
+      // @ts-expect-error - Supabase TypeScript inference limitation with update types
       .update(updateData)
       .eq('id', params.id)
       .select()
@@ -191,7 +197,7 @@ export async function DELETE(
       .from('users')
       .select('role')
       .eq('id', user.id)
-      .single()
+      .single<{ role: UserRole }>()
 
     if (userError || !userData || userData.role !== 'admin') {
       return NextResponse.json(
@@ -201,12 +207,14 @@ export async function DELETE(
     }
 
     // Soft delete: Update status to expired
+    const deleteUpdate = {
+      status: 'expired' as const,
+      expired_at: new Date().toISOString()
+    }
     const { data, error } = await supabase
       .from('opportunities')
-      .update({
-        status: 'expired',
-        expired_at: new Date().toISOString()
-      })
+      // @ts-expect-error - Supabase TypeScript inference limitation with update types
+      .update(deleteUpdate)
       .eq('id', params.id)
       .select()
       .single()
