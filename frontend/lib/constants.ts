@@ -32,3 +32,26 @@ export const ROLE_TYPES = [
 
 export type RoleType = typeof ROLE_TYPES[number]
 
+// Major fields of study used for filtering
+export const MAJORS = [
+  "Computer Science",
+  "Software Engineering",
+  "Data Science",
+  "Information Technology",
+  "Information Systems",
+  "Electrical Engineering",
+  "Mechanical Engineering",
+  "Engineering",
+  "Artificial Intelligence",
+  "Machine Learning",
+  "Cybersecurity",
+  "Mathematics",
+  "Statistics",
+  "Business",
+  "Business Administration",
+  "Product Management",
+  "Finance",
+  "Marketing",
+] as const
+
+export type Major = typeof MAJORS[number]
