@@ -4,6 +4,7 @@ import { Database } from "@/lib/supabase/types"
 
 type OpportunityType = 'internship' | 'full_time' | 'research' | 'fellowship' | 'scholarship'
 type OpportunityStatus = 'active' | 'expired'
+type OpportunityStatusFilter = OpportunityStatus | 'all'
 type SortOption = 'deadline-asc' | 'deadline-desc' | 'recent' | 'company-asc'
 
 export async function GET(request: NextRequest) {
@@ -23,10 +24,11 @@ export async function GET(request: NextRequest) {
     // Parse query parameters
     const searchParams = request.nextUrl.searchParams
     const type = searchParams.get('type') as OpportunityType | null
-    const majors = searchParams.get('majors')
-    const roles = searchParams.get('roles')
-    const status = (searchParams.get('status') as OpportunityStatus) || 'active'
+    const status = (searchParams.get('status') as OpportunityStatusFilter) || 'active'
     const sort = (searchParams.get('sort') as SortOption) || 'deadline-asc'
+    const searchQuery = searchParams.get('search')
+      ? searchParams.get('search')!.trim()
+      : ''
     const limit = Math.min(parseInt(searchParams.get('limit') || '20'), 100)
     const offset = parseInt(searchParams.get('offset') || '0')
 
@@ -41,7 +43,7 @@ export async function GET(request: NextRequest) {
       `, { count: 'exact' })
 
     // Apply status filter
-    if (status) {
+    if (status && status !== 'all') {
       query = query.eq('status', status)
     }
 
@@ -55,30 +57,25 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    if (roles) {
-      const roleList = roles.split(',').map(r => r.trim()).filter(Boolean)
-      if (roleList.length === 1) {
-        query = query.eq('role_type', roleList[0])
-      } else if (roleList.length > 1) {
-        query = query.in('role_type', roleList)
+    if (searchQuery) {
+      const ilikeQuery = searchQuery
+        .replace(/%/g, '')
+        .replace(/,/g, '')
+        .replace(/'/g, "''")
+        .trim()
+
+      if (ilikeQuery) {
+        const orFilters = [
+          `company_name.ilike.%${ilikeQuery}%`,
+          `job_title.ilike.%${ilikeQuery}%`,
+          `role_type.ilike.%${ilikeQuery}%`,
+          `location.ilike.%${ilikeQuery}%`,
+          `description.ilike.%${ilikeQuery}%`,
+          `requirements.ilike.%${ilikeQuery}%`,
+        ].join(',')
+
+        query = query.or(orFilters)
       }
-    }
-
-    // Apply major filter (comma separated values)
-    if (majors) {
-      const majorList = majors.split(',').map(m => m.trim()).filter(Boolean)
-
-      // Use PostgREST 'cs' (contains) operator for JSONB arrays
-      // Format: relevant_majors.cs.["MajorName"] checks if the JSONB array contains the value
-      const orFilters = majorList
-        .map((major) => {
-          // Escape quotes in major name for JSON
-          const escapedMajor = major.replace(/"/g, '\\"')
-          // Format: relevant_majors.cs.["MajorName"]
-          return `relevant_majors.cs.["${escapedMajor}"]`
-        })
-        .join(',')
-      query = query.or(orFilters)
     }
 
     // Apply sorting

@@ -2,13 +2,46 @@
 
 import Link from "next/link"
 import { Briefcase, Menu, X } from "lucide-react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useAuth } from "@/hooks/useAuth"
 import ProfileDropdown from "./ProfileDropdown"
 
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [isAdmin, setIsAdmin] = useState(false)
   const { user, loading } = useAuth()
+
+  useEffect(() => {
+    if (!user) {
+      setIsAdmin(false)
+      return
+    }
+
+    let isMounted = true
+
+    const checkAdmin = async () => {
+      try {
+        const response = await fetch("/api/auth/user-role")
+        if (!response.ok) {
+          throw new Error("Unable to verify role")
+        }
+        const data = await response.json()
+        if (isMounted) {
+          setIsAdmin(Boolean(data.isAdmin))
+        }
+      } catch {
+        if (isMounted) {
+          setIsAdmin(false)
+        }
+      }
+    }
+
+    checkAdmin()
+
+    return () => {
+      isMounted = false
+    }
+  }, [user])
 
   return (
     <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-gray-200 shadow-sm">
@@ -34,6 +67,14 @@ export default function Navbar() {
                 >
                   Dashboard
                 </Link>
+                {isAdmin && (
+                  <Link
+                    href="/admin"
+                    className="text-gray-700 hover:text-purple-600 font-medium transition-colors duration-200"
+                  >
+                    Admin
+                  </Link>
+                )}
                 <ProfileDropdown />
               </>
             ) : (
@@ -80,6 +121,15 @@ export default function Navbar() {
                 >
                   Dashboard
                 </Link>
+                {isAdmin && (
+                  <Link
+                    href="/admin"
+                    className="block px-4 py-2 text-gray-700 hover:text-purple-600 hover:bg-purple-50 rounded-lg font-medium transition-colors duration-200"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    Admin
+                  </Link>
+                )}
                 <Link
                   href="/profile"
                   className="block px-4 py-2 text-gray-700 hover:text-purple-600 hover:bg-purple-50 rounded-lg font-medium transition-colors duration-200"
