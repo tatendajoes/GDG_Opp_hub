@@ -9,6 +9,7 @@ import { User } from '@/types'
 import { Button } from '@/components/ui/button'
 import { Briefcase, Calendar, GraduationCap, Mail, Settings, User as UserIcon, Camera, Upload } from 'lucide-react'
 import { format } from 'date-fns'
+import Navbar from '@/components/layout/Navbar'
 import PageHeader from '@/components/layout/PageHeader'
 import toast from 'react-hot-toast'
 
@@ -193,6 +194,7 @@ export default function ProfilePage() {
   return (
     <ProtectedRoute>
       <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50">
+        <Navbar />
         <PageHeader
           title="My Profile"
           rightActions={

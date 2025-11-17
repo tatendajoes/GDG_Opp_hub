@@ -45,8 +45,12 @@ export async function POST(request: NextRequest) {
     }
 
     const { url, company_name: userProvidedCompany, opportunity_type: userProvidedType } = validationResult.data
+    const manualContent = (body as any).manualContent // Get manual content if provided
 
     console.log(`[Submit] Starting submission for URL: ${url}`)
+    if (manualContent) {
+      console.log(`[Submit] Manual content provided (${manualContent.length} chars)`)
+    }
 
     // Step 1: Check if URL already exists
     const { data: existingOpportunity } = await (supabase
@@ -65,10 +69,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Step 2: Scrape the URL
+    // Step 2: Scrape the URL (or use manual content)
     console.log(`[Submit] Scraping URL...`)
     const scrapeResult = await smartScrape({ 
       url,
+      manualContent,
       timeout: 30000 
     })
 
@@ -89,6 +94,7 @@ export async function POST(request: NextRequest) {
 
     // Step 3: Parse with Gemini AI
     console.log(`[Submit] Parsing with Gemini AI...`)
+    console.log(`[Submit] Scraped content length: ${scrapeResult.content.length} chars`)
     let parsedData
     try {
       parsedData = await parseJobPostingFromText(scrapeResult.content, {
@@ -96,6 +102,7 @@ export async function POST(request: NextRequest) {
         maxRetries: 3
       })
       console.log(`[Submit] AI parsing successful`)
+      console.log(`[Submit] Parsed data:`, JSON.stringify(parsedData, null, 2))
     } catch (error) {
       console.error(`[Submit] AI parsing failed:`, error)
 
@@ -145,6 +152,11 @@ export async function POST(request: NextRequest) {
       ai_parsed_data: parsedData, // Store original AI response
     }
 
+    console.log(`[Submit] Final data before save:`, JSON.stringify({
+      ...finalData,
+      submitted_by: '[REDACTED]',
+      ai_parsed_data: '[REDACTED]'
+    }, null, 2))
     console.log(`[Submit] Saving to database...`)
 
     // Step 5: Insert into database
@@ -161,6 +173,7 @@ export async function POST(request: NextRequest) {
 
     if (insertError) {
       console.error(`[Submit] Database insert failed:`, insertError)
+      console.error(`[Submit] Failed data:`, JSON.stringify(finalData, null, 2))
       
       // Check for duplicate URL (in case of race condition)
       if (insertError.code === '23505') {
@@ -183,6 +196,15 @@ export async function POST(request: NextRequest) {
     }
 
     console.log(`[Submit] Success! Opportunity ID: ${opportunity?.id}`)
+    console.log(`[Submit] Saved opportunity data:`, JSON.stringify({
+      id: opportunity?.id,
+      company_name: opportunity?.company_name,
+      job_title: opportunity?.job_title,
+      description: opportunity?.description ? `${opportunity.description.substring(0, 100)}...` : null,
+      requirements: opportunity?.requirements ? `${opportunity.requirements.substring(0, 100)}...` : null,
+      location: opportunity?.location,
+      deadline: opportunity?.deadline,
+    }, null, 2))
 
     // Step 6: Return success response
     return NextResponse.json({
@@ -192,6 +214,15 @@ export async function POST(request: NextRequest) {
       metadata: {
         scrapeMethod: scrapeResult.method,
         aiParsed: true,
+        scrapedContentLength: scrapeResult.content.length,
+        parsedFields: {
+          company_name: parsedData.company_name ? '✓' : '✗',
+          job_title: parsedData.job_title ? '✓' : '✗',
+          description: parsedData.description ? '✓' : '✗',
+          requirements: parsedData.requirements ? '✓' : '✗',
+          location: parsedData.location ? '✓' : '✗',
+          deadline: parsedData.deadline ? '✓' : '✗',
+        }
       }
     }, { status: 201 })
 

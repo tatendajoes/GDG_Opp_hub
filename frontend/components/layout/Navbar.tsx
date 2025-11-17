@@ -3,9 +3,12 @@
 import Link from "next/link"
 import { Briefcase, Menu, X } from "lucide-react"
 import { useState } from "react"
+import { useAuth } from "@/hooks/useAuth"
+import ProfileDropdown from "./ProfileDropdown"
 
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const { user, loading } = useAuth()
 
   return (
     <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-gray-200 shadow-sm">
@@ -23,24 +26,32 @@ export default function Navbar() {
           
           {/* Desktop Navigation */}
           <div className="hidden md:flex gap-6 items-center">
-            <Link 
-              href="/dashboard" 
-              className="text-gray-700 hover:text-purple-600 font-medium transition-colors duration-200"
-            >
-              Dashboard
-            </Link>
-            <Link 
-              href="/login" 
-              className="px-4 py-2 text-gray-700 hover:text-purple-600 font-medium transition-colors duration-200"
-            >
-              Login
-            </Link>
-            <Link 
-              href="/signup" 
-              className="px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg font-semibold hover:shadow-lg transition-all duration-300 transform hover:scale-105"
-            >
-              Sign Up
-            </Link>
+            {user ? (
+              <>
+                <Link 
+                  href="/dashboard" 
+                  className="text-gray-700 hover:text-purple-600 font-medium transition-colors duration-200"
+                >
+                  Dashboard
+                </Link>
+                <ProfileDropdown />
+              </>
+            ) : (
+              <>
+                <Link 
+                  href="/login" 
+                  className="px-4 py-2 text-gray-700 hover:text-purple-600 font-medium transition-colors duration-200"
+                >
+                  Login
+                </Link>
+                <Link 
+                  href="/signup" 
+                  className="px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg font-semibold hover:shadow-lg transition-all duration-300 transform hover:scale-105"
+                >
+                  Sign Up
+                </Link>
+              </>
+            )}
           </div>
 
           {/* Mobile Menu Button */}
@@ -60,27 +71,48 @@ export default function Navbar() {
         {/* Mobile Navigation Menu */}
         {isMenuOpen && (
           <div className="md:hidden mt-4 pb-4 space-y-3 border-t border-gray-200 pt-4 animate-fade-in">
-            <Link
-              href="/dashboard"
-              className="block px-4 py-2 text-gray-700 hover:text-purple-600 hover:bg-purple-50 rounded-lg font-medium transition-colors duration-200"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              Dashboard
-            </Link>
-            <Link
-              href="/login"
-              className="block px-4 py-2 text-gray-700 hover:text-purple-600 hover:bg-purple-50 rounded-lg font-medium transition-colors duration-200"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              Login
-            </Link>
-            <Link
-              href="/signup"
-              className="block px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg font-semibold text-center hover:shadow-lg transition-all duration-300"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              Sign Up
-            </Link>
+            {user ? (
+              <>
+                <Link
+                  href="/dashboard"
+                  className="block px-4 py-2 text-gray-700 hover:text-purple-600 hover:bg-purple-50 rounded-lg font-medium transition-colors duration-200"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Dashboard
+                </Link>
+                <Link
+                  href="/profile"
+                  className="block px-4 py-2 text-gray-700 hover:text-purple-600 hover:bg-purple-50 rounded-lg font-medium transition-colors duration-200"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Profile
+                </Link>
+                <Link
+                  href="/settings"
+                  className="block px-4 py-2 text-gray-700 hover:text-purple-600 hover:bg-purple-50 rounded-lg font-medium transition-colors duration-200"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Settings
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  className="block px-4 py-2 text-gray-700 hover:text-purple-600 hover:bg-purple-50 rounded-lg font-medium transition-colors duration-200"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Login
+                </Link>
+                <Link
+                  href="/signup"
+                  className="block px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg font-semibold text-center hover:shadow-lg transition-all duration-300"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Sign Up
+                </Link>
+              </>
+            )}
           </div>
         )}
       </div>

@@ -10,7 +10,7 @@ import { Plus } from 'lucide-react'
 import OpportunityCard from '@/components/opportunities/OpportunityCard'
 import { useOpportunities } from '@/hooks/useOpportunities'
 import { useAuth } from '@/hooks/useAuth'
-import ProfileDropdown from '@/components/layout/ProfileDropdown'
+import Navbar from '@/components/layout/Navbar'
 
 type OpportunityType = 'internship' | 'full_time' | 'research' | 'fellowship' | 'scholarship'
 
@@ -132,17 +132,7 @@ export default function DashboardPage() {
   return (
     <ProtectedRoute>
       <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50">
-        {/* Header */}
-        <div className="bg-white shadow-sm border-b border-gray-200">
-          <div className="container mx-auto px-4 py-4">
-            <div className="flex items-center justify-between">
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
-                GDG Opportunities Hub
-              </h1>
-              <ProfileDropdown />
-            </div>
-          </div>
-        </div>
+        <Navbar />
 
         {/* Main Content */}
         <div className="container mx-auto px-4 py-8">

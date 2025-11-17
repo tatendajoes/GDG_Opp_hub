@@ -255,27 +255,31 @@ Extract the following fields and return as JSON:
 }
 
 Instructions:
-1. company_name: Extract the company or organization name
-2. job_title: Extract the job/position title
+1. company_name: Extract the company or organization name. Look in page title, headers, or URL if not explicitly stated.
+2. job_title: Extract the job/position title. Look for titles like "Software Engineer", "Intern", "Research Assistant", etc.
 3. opportunity_type: Classify as one of: internship, full_time, research, fellowship, or scholarship
-   - Use "internship" for summer internships, co-ops, intern positions
-   - Use "full_time" for full-time jobs, permanent positions
-   - Use "research" for research positions, research assistantships
+   - Use "internship" for summer internships, co-ops, intern positions, "intern" keywords
+   - Use "full_time" for full-time jobs, permanent positions, "full-time" keywords
+   - Use "research" for research positions, research assistantships, "research" keywords
    - Use "fellowship" for fellowship programs
    - Use "scholarship" for scholarships, grants
-4. role_type: Extract the role category (e.g., "Software Engineering", "Product Management", "Data Science", "Marketing", etc.)
-5. relevant_majors: Extract list of relevant academic majors or fields of study
-6. deadline: Extract application deadline in YYYY-MM-DD format. Parse dates like "December 15, 2025" as "2025-12-15"
-7. requirements: Extract key requirements (education, experience, skills)
-8. location: Extract job location (city, state, country, or "Remote")
-9. description: Extract a brief job description (2-3 sentences)
+4. role_type: Extract the role category (e.g., "Software Engineering", "Product Management", "Data Science", "Marketing", etc.) from job title or description
+5. relevant_majors: Extract list of relevant academic majors or fields of study. Look for mentions of degrees, majors, or fields
+6. deadline: Extract application deadline in YYYY-MM-DD format. Parse dates like "December 15, 2025" as "2025-12-15". Look for "deadline", "apply by", "closing date" keywords
+7. requirements: Extract ALL key requirements including education, experience, skills, qualifications. Combine all requirement sections into one comprehensive string. Include preferred qualifications if available.
+8. location: Extract job location (city, state, country, or "Remote"). Look for location mentions, "based in", "located in", or remote indicators
+9. description: Extract a comprehensive job description. Include what the role involves, responsibilities, and what the company is looking for. If full description isn't available, create a brief summary based on available information.
 
 Rules:
 - Return ONLY valid JSON, no markdown, no code blocks, no explanations
-- Use null for any field that cannot be determined
+- Be AGGRESSIVE in extracting information - look for any clues in the content
+- If information is partially available, extract what you can find
+- For requirements: Combine all requirement sections, qualifications, and preferred qualifications into one string
+- For description: Provide a comprehensive description (3-5 sentences) if possible, or at least 2 sentences
+- Use null ONLY if absolutely no information can be found for a field
 - For dates, always use YYYY-MM-DD format
 - For relevant_majors, return an array even if only one major is found
-- Be concise but accurate
+- Be thorough and extract as much information as possible
 
 Return the JSON now:`
 }

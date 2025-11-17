@@ -1,11 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import toast from 'react-hot-toast'
 import confetti from 'canvas-confetti'
-import { Loader2, Sparkles } from 'lucide-react'
+import { Loader2, Sparkles, Info } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -41,8 +41,23 @@ const opportunityTypeLabels: Record<string, string> = {
   scholarship: 'Scholarship',
 }
 
+// Check if URL is from a restricted site
+const RESTRICTED_SITES = ['linkedin.com', 'facebook.com', 'fb.com', 'twitter.com', 'x.com', 'instagram.com']
+
+function isRestrictedSite(url: string): boolean {
+  try {
+    const urlObj = new URL(url)
+    const hostname = urlObj.hostname.toLowerCase()
+    return RESTRICTED_SITES.some(site => hostname.includes(site))
+  } catch {
+    return false
+  }
+}
+
 export default function SubmitModal({ open, onOpenChange, onSuccess }: SubmitModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [manualContent, setManualContent] = useState('')
+  const [requiresManual, setRequiresManual] = useState(false)
 
   const {
     register,
@@ -61,21 +76,58 @@ export default function SubmitModal({ open, onOpenChange, onSuccess }: SubmitMod
   })
 
   const opportunityType = watch('opportunity_type')
+  const url = watch('url')
+
+  // Check if URL requires manual content
+  useEffect(() => {
+    if (url && isRestrictedSite(url)) {
+      setRequiresManual(true)
+    } else {
+      setRequiresManual(false)
+    }
+  }, [url])
 
   const onSubmit = async (data: SubmitOpportunityFormData) => {
+    // Validate manual content if required
+    if (requiresManual && manualContent.trim().length < 50) {
+      toast.error('Please paste at least 50 characters of job posting content', { duration: 4000 })
+      return
+    }
+
     setIsSubmitting(true)
     try {
+      // Include manual content if provided
+      const requestBody: any = { ...data }
+      if (requiresManual && manualContent.trim().length >= 50) {
+        requestBody.manualContent = manualContent.trim()
+      }
+
       const response = await fetch('/api/opportunities/submit', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify(requestBody),
       })
 
       const result = await response.json()
 
+      // Log parsed fields for debugging
+      if (result.metadata?.parsedFields) {
+        console.log('📊 Parsed Fields:', result.metadata.parsedFields)
+        console.log('📏 Scraped Content Length:', result.metadata.scrapedContentLength, 'chars')
+      }
+
       if (!response.ok) {
+        // Check if manual content is required
+        if (result.requiresManual) {
+          setRequiresManual(true)
+          const errorMsg = result.message || result.error || 'This site requires manual content paste'
+          toast.error(errorMsg, { duration: 5000 })
+          setIsSubmitting(false)
+          return
+        }
+
         if (response.status === 400 && result.details) {
           const errorMessages = result.details.map((d: any) => d.message).join(', ')
           throw new Error(errorMessages || result.message || result.error || 'Validation failed')
@@ -102,6 +154,8 @@ export default function SubmitModal({ open, onOpenChange, onSuccess }: SubmitMod
       })
       
       reset()
+      setManualContent('')
+      setRequiresManual(false)
       
       setTimeout(() => {
         onOpenChange(false)
@@ -121,6 +175,8 @@ export default function SubmitModal({ open, onOpenChange, onSuccess }: SubmitMod
   const handleClose = () => {
     if (!isSubmitting) {
       reset()
+      setManualContent('')
+      setRequiresManual(false)
       onOpenChange(false)
     }
   }
@@ -169,6 +225,39 @@ export default function SubmitModal({ open, onOpenChange, onSuccess }: SubmitMod
             )}
           </div>
 
+          {/* Manual Content Field (for restricted sites) */}
+          {requiresManual && (
+            <div className="space-y-2 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+              <div className="flex items-start gap-2 mb-2">
+                <Info className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
+                <div className="flex-1">
+                  <Label htmlFor="manualContent" className="text-amber-900 font-semibold">
+                    Manual Content Required
+                  </Label>
+                  <p className="text-sm text-amber-700 mt-1">
+                    {url.includes('linkedin.com') 
+                      ? 'LinkedIn requires login and blocks automated scraping. Please copy and paste the job description below.'
+                      : 'This site cannot be automatically scraped. Please copy and paste the job posting content below.'}
+                  </p>
+                </div>
+              </div>
+              <textarea
+                id="manualContent"
+                value={manualContent}
+                onChange={(e) => setManualContent(e.target.value)}
+                placeholder="Paste the job description, requirements, location, deadline, and other details here..."
+                disabled={isSubmitting}
+                rows={8}
+                className="w-full px-3 py-2 border border-amber-300 rounded-md focus:ring-2 focus:ring-amber-500 focus:border-amber-500 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+              />
+              {manualContent.trim().length > 0 && manualContent.trim().length < 50 && (
+                <p className="text-xs text-amber-600">
+                  Please provide at least 50 characters of content.
+                </p>
+              )}
+            </div>
+          )}
+
           {/* Opportunity Type Field */}
           <div className="space-y-2">
             <Label htmlFor="opportunity_type">
@@ -176,7 +265,7 @@ export default function SubmitModal({ open, onOpenChange, onSuccess }: SubmitMod
             </Label>
             <Select
               value={opportunityType}
-              onValueChange={(value) => setValue('opportunity_type', value as any)}
+              onValueChange={(value) => setValue('opportunity_type', value as any, { shouldValidate: true })}
               disabled={isSubmitting}
             >
               <SelectTrigger 

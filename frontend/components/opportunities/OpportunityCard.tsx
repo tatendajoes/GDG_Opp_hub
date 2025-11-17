@@ -47,19 +47,9 @@ export default function OpportunityCard({ opportunity }: Readonly<OpportunityCar
       </h3>
 
       {/* Job Title */}
-      <h4 className="text-md text-gray-700 mb-4">
+      <h4 className="text-md text-gray-700 mb-3">
         {opportunity.job_title}
       </h4>
-
-      {/* Deadline */}
-      {opportunity.deadline && (
-        <div className="flex items-center text-gray-600 mb-2">
-          <Calendar className="w-4 h-4 mr-2 flex-shrink-0" />
-          <span className="text-sm">
-            Deadline: {format(new Date(opportunity.deadline), 'MMM dd, yyyy')}
-          </span>
-        </div>
-      )}
 
       {/* Type Badge */}
       <div className="flex items-center mb-2">
@@ -71,11 +61,25 @@ export default function OpportunityCard({ opportunity }: Readonly<OpportunityCar
 
       {/* Location */}
       {opportunity.location && (
-        <div className="flex items-center text-gray-600 mb-4">
+        <div className="flex items-center text-gray-600 mb-2">
           <MapPin className="w-4 h-4 mr-2 flex-shrink-0" />
           <span className="text-sm">{opportunity.location}</span>
         </div>
       )}
+
+      {/* Deadline - Always show, more prominent */}
+      <div className="flex items-center mb-4">
+        <Calendar className="w-4 h-4 mr-2 flex-shrink-0 text-purple-600" />
+        <span className="text-sm font-medium">
+          {opportunity.deadline ? (
+            <span className="text-gray-900">
+              Deadline: {format(new Date(opportunity.deadline), 'MMM dd, yyyy')}
+            </span>
+          ) : (
+            <span className="text-gray-400 italic">No deadline specified</span>
+          )}
+        </span>
+      </div>
 
       {/* View Details Button */}
       <Link href={`/opportunities/${opportunity.id}`} className="block">

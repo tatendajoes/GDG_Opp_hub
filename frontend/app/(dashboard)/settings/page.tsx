@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase/client'
 import { User } from '@/types'
 import { Database } from '@/lib/supabase/types'
 import { Button } from '@/components/ui/button'
+import Navbar from '@/components/layout/Navbar'
 import PageHeader from '@/components/layout/PageHeader'
 import toast from 'react-hot-toast'
 
@@ -194,6 +195,7 @@ export default function SettingsPage() {
   return (
     <ProtectedRoute>
       <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50">
+        <Navbar />
         <PageHeader title="Settings" />
 
         {/* Main Content */}

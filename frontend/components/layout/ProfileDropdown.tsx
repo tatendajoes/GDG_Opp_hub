@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
-import { User, Settings, LogOut, ChevronDown, Home } from 'lucide-react'
+import { User, Settings, LogOut, ChevronDown } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export default function ProfileDropdown() {
@@ -95,11 +95,6 @@ export default function ProfileDropdown() {
     }
   }
 
-  const navigateToDashboard = () => {
-    setIsOpen(false)
-    router.push('/dashboard')
-  }
-
   const navigateToProfile = () => {
     setIsOpen(false)
     router.push('/profile')
@@ -118,7 +113,6 @@ export default function ProfileDropdown() {
   }
 
   const menuItems = [
-    { label: 'Dashboard', icon: Home, onClick: navigateToDashboard },
     { label: 'Your Profile', icon: User, onClick: navigateToProfile },
     { label: 'Settings', icon: Settings, onClick: navigateToSettings },
     { label: 'Log out', icon: LogOut, onClick: handleLogout, isDestructive: true },
