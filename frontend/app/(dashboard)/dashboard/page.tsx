@@ -11,6 +11,7 @@ import OpportunityCard from '@/components/opportunities/OpportunityCard'
 import { useOpportunities } from '@/hooks/useOpportunities'
 import { useAuth } from '@/hooks/useAuth'
 import ProfileDropdown from '@/components/layout/ProfileDropdown'
+import type { Major } from '@/lib/constants'
 
 type OpportunityType = 'internship' | 'full_time' | 'research' | 'fellowship' | 'scholarship'
 
@@ -19,6 +20,7 @@ export default function DashboardPage() {
 
   // Filter and sort state
   const [selectedTypes, setSelectedTypes] = useState<OpportunityType[]>([])
+  const [selectedMajors, setSelectedMajors] = useState<Major[]>([])
   const [selectedSort, setSelectedSort] = useState<SortOption>('deadline-asc')
 
   // Modal state
@@ -27,6 +29,7 @@ export default function DashboardPage() {
   // Fetch opportunities using API hook - only when auth is ready
   const { opportunities, loading, error, refetch } = useOpportunities({
     types: selectedTypes,
+    majors: selectedMajors,
     status: 'active',
     sort: selectedSort,
     autoFetch: !authLoading  // Don't fetch until auth is ready
@@ -88,6 +91,8 @@ export default function DashboardPage() {
       )
     }
 
+    const hasFilters = selectedTypes.length > 0 || selectedMajors.length > 0
+
     if (opportunities.length === 0) {
       return (
         <div className="flex items-center justify-center min-h-[400px]">
@@ -110,8 +115,8 @@ export default function DashboardPage() {
                 No Opportunities Found
               </h3>
               <p className="text-gray-600 mb-4">
-                {selectedTypes.length > 0
-                  ? 'No opportunities match your current filter. Try changing the filter or submit a new one!'
+                {hasFilters
+                  ? 'No opportunities match your current filter. Try changing the filters or submit a new opportunity!'
                   : 'There are currently no active opportunities. Be the first to submit one!'}
               </p>
             </div>
@@ -167,6 +172,8 @@ export default function DashboardPage() {
           <FilterBar
             selectedTypes={selectedTypes}
             onFilterChange={setSelectedTypes}
+            selectedMajors={selectedMajors}
+            onMajorChange={setSelectedMajors}
           />
 
           {/* Opportunities List */}
