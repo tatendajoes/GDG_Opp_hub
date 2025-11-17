@@ -67,14 +67,17 @@ export async function GET(request: NextRequest) {
     if (majors) {
       const majorList = majors.split(',').map(m => m.trim()).filter(Boolean)
 
-      if (majorList.length === 1) {
-        query = query.contains('relevant_majors', [majorList[0]])
-      } else if (majorList.length > 1) {
-        const orFilters = majorList
-          .map((major) => `relevant_majors.cs.${JSON.stringify([major])}`)
-          .join(',')
-        query = query.or(orFilters)
-      }
+      // Use PostgREST 'cs' (contains) operator for JSONB arrays
+      // Format: relevant_majors.cs.["MajorName"] checks if the JSONB array contains the value
+      const orFilters = majorList
+        .map((major) => {
+          // Escape quotes in major name for JSON
+          const escapedMajor = major.replace(/"/g, '\\"')
+          // Format: relevant_majors.cs.["MajorName"]
+          return `relevant_majors.cs.["${escapedMajor}"]`
+        })
+        .join(',')
+      query = query.or(orFilters)
     }
 
     // Apply sorting
